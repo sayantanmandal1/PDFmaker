@@ -138,7 +138,11 @@ export default function DocumentEditorPage() {
                 </p>
               </div>
               {totalItems > 0 && (
-                <ExportButton projectId={projectId} projectName={project.name} />
+                <ExportButton 
+                  projectId={projectId} 
+                  projectName={project.name}
+                  documentType={project.document_type}
+                />
               )}
             </div>
           </div>

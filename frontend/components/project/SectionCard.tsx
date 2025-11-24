@@ -18,6 +18,9 @@ export function SectionCard({ section, onUpdate }: SectionCardProps) {
   const [showHistory, setShowHistory] = useState(false);
   const [showRefinement, setShowRefinement] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedContent, setEditedContent] = useState(section.content || '');
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleRefine = async (prompt: string) => {
     setIsRefining(true);
@@ -52,6 +55,40 @@ export function SectionCard({ section, onUpdate }: SectionCardProps) {
     setError(null);
   };
 
+  const handleEdit = () => {
+    setEditedContent(section.content || '');
+    setIsEditing(true);
+    setError(null);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setEditedContent(section.content || '');
+    setError(null);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editedContent.trim()) {
+      setError('Content cannot be empty');
+      return;
+    }
+
+    setIsSaving(true);
+    setError(null);
+
+    try {
+      const response = await contentApi.updateSection(section.id, {
+        content: editedContent,
+      });
+      onUpdate(response.section);
+      setIsEditing(false);
+    } catch (err: any) {
+      setError(err.message || 'Failed to save changes');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <article className="bg-white rounded-lg shadow-md overflow-hidden">
       {/* Section Header */}
@@ -62,11 +99,51 @@ export function SectionCard({ section, onUpdate }: SectionCardProps) {
       {/* Section Content */}
       <div className="p-4 sm:p-6">
         {section.content ? (
-          <div className="prose prose-sm sm:prose max-w-none">
-            <div className="text-sm sm:text-base text-gray-800 leading-relaxed whitespace-pre-wrap break-words">
-              {section.content}
+          isEditing ? (
+            <div className="space-y-4">
+              <textarea
+                value={editedContent}
+                onChange={(e) => setEditedContent(e.target.value)}
+                className="w-full min-h-[300px] px-4 py-3 text-sm sm:text-base text-black border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y"
+                placeholder="Enter section content..."
+              />
+              <div className="flex gap-3">
+                <button
+                  onClick={handleSaveEdit}
+                  disabled={isSaving || !editedContent.trim()}
+                  className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors font-medium"
+                >
+                  {isSaving ? 'Saving...' : 'Save Changes'}
+                </button>
+                <button
+                  onClick={handleCancelEdit}
+                  disabled={isSaving}
+                  className="px-6 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 disabled:opacity-50 transition-colors font-medium"
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div>
+              <div className="flex justify-end mb-2">
+                <button
+                  onClick={handleEdit}
+                  className="text-blue-600 hover:text-blue-700 font-medium text-sm flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                  Edit Content
+                </button>
+              </div>
+              <div className="prose prose-sm sm:prose max-w-none">
+                <div className="text-sm sm:text-base text-gray-800 leading-relaxed whitespace-pre-wrap break-words">
+                  {section.content}
+                </div>
+              </div>
+            </div>
+          )
         ) : (
           <div className="text-center py-8 sm:py-12">
             <svg

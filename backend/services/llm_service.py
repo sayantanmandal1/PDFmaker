@@ -115,7 +115,7 @@ class LLMService:
             APIConnectionError: If connection fails
         """
         # Build context-aware prompt
-        prompt = f"""Generate professional content for a business document section.
+        prompt = f"""Generate comprehensive, detailed content for a Word document section.
 
 Document Topic: {topic}
 Section Header: {section_header}"""
@@ -125,13 +125,20 @@ Section Header: {section_header}"""
         
         prompt += """
 
-Please write 2-3 paragraphs of well-structured, professional content for this section. 
-The content should be informative, clear, and appropriate for a business document.
-Focus on providing valuable information related to the section header and main topic."""
+Please write 3-5 well-developed paragraphs of professional content for this section.
+The content should be:
+- Detailed and informative with substantial depth
+- Written in complete, flowing paragraphs (not bullet points)
+- Professional and appropriate for a formal business document
+- Rich in information and analysis
+- Between 300-500 words to provide thorough coverage
+
+Focus on providing comprehensive information, explanations, and insights related to the section header and main topic.
+Write in a narrative style suitable for reading in a Word document."""
         
-        system_message = "You are a professional business writer creating high-quality document content."
+        system_message = "You are a professional business writer creating comprehensive, detailed document content for Word documents. Write in full paragraphs with substantial depth and detail."
         
-        return self._call_openai(prompt, system_message, max_tokens=800)
+        return self._call_openai(prompt, system_message, max_tokens=1200)
     
     def generate_slide_content(
         self,
@@ -156,7 +163,7 @@ Focus on providing valuable information related to the section header and main t
             APIConnectionError: If connection fails
         """
         # Build context-aware prompt
-        prompt = f"""Generate professional content for a PowerPoint presentation slide.
+        prompt = f"""Generate concise, impactful content for a PowerPoint presentation slide.
 
 Presentation Topic: {topic}
 Slide Title: {slide_title}"""
@@ -166,18 +173,21 @@ Slide Title: {slide_title}"""
         
         prompt += """
 
-Please write concise, impactful bullet points or short paragraphs for this slide.
+Please write concise, punchy bullet points for this slide.
 The content should be:
-- Clear and easy to understand
-- Suitable for visual presentation
+- Brief and scannable (3-6 bullet points)
+- Each bullet point should be 1-2 short sentences maximum
+- Clear, impactful, and easy to read at a glance
+- Suitable for visual presentation on a slide
 - Professional and engaging
-- Limited to 3-5 key points or 1-2 short paragraphs
+- Total content should be 50-100 words maximum
 
-Format the content appropriately for a slide presentation."""
+Format as bullet points, each on a new line.
+Remember: slides are visual aids, not documents. Keep it concise!"""
         
-        system_message = "You are a professional presentation designer creating engaging slide content."
+        system_message = "You are a professional presentation designer creating concise, impactful slide content. Keep bullet points short and scannable - slides are visual aids, not documents."
         
-        return self._call_openai(prompt, system_message, max_tokens=500)
+        return self._call_openai(prompt, system_message, max_tokens=300)
     
     def refine_content(
         self,
