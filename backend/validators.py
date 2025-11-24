@@ -13,17 +13,9 @@ def validate_password_strength(password: str) -> str:
     
     Requirements:
     - At least 6 characters long
-    - Contains at least one letter
-    - Contains at least one number or special character
     """
     if len(password) < 6:
         raise ValueError("Password must be at least 6 characters long")
-    
-    if not re.search(r'[a-zA-Z]', password):
-        raise ValueError("Password must contain at least one letter")
-    
-    if not re.search(r'[\d\W]', password):
-        raise ValueError("Password must contain at least one number or special character")
     
     return password
 

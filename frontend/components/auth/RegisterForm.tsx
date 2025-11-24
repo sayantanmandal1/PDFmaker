@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { RegisterData } from '@/types';
 import { Eye, EyeOff } from 'lucide-react';
@@ -68,6 +68,17 @@ export function RegisterForm({ onSuccess, onSwitchToLogin }: RegisterFormProps) 
     }
   };
 
+  // Real-time password matching validation
+  useEffect(() => {
+    if (confirmPassword && formData.password) {
+      if (formData.password !== confirmPassword) {
+        setFormErrors(prev => ({ ...prev, confirmPassword: 'Passwords do not match' }));
+      } else {
+        setFormErrors(prev => ({ ...prev, confirmPassword: undefined }));
+      }
+    }
+  }, [formData.password, confirmPassword]);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     
@@ -77,8 +88,8 @@ export function RegisterForm({ onSuccess, onSwitchToLogin }: RegisterFormProps) 
       setFormData(prev => ({ ...prev, [name]: value }));
     }
     
-    // Clear field error when user starts typing
-    if (formErrors[name as keyof (RegisterData & { confirmPassword: string })]) {
+    // Clear field error when user starts typing (except for confirmPassword which is handled by useEffect)
+    if (name !== 'confirmPassword' && formErrors[name as keyof (RegisterData & { confirmPassword: string })]) {
       setFormErrors(prev => ({ ...prev, [name]: undefined }));
     }
     
