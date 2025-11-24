@@ -24,8 +24,16 @@ export function CommentBox({ contentId, contentType }: CommentBoxProps) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Reset state when contentId changes
+    setComments([]);
+    setNewComment('');
+    setEditingCommentId(null);
+    setEditingText('');
+    setError(null);
+    
+    // Load comments for the new content
     loadComments();
-  }, [contentId]);
+  }, [contentId, contentType]);
 
   const loadComments = async () => {
     setIsLoading(true);
@@ -36,12 +44,23 @@ export function CommentBox({ contentId, contentType }: CommentBoxProps) {
         ? await contentApi.getSectionComments(contentId)
         : await contentApi.getSlideComments(contentId);
       
-      setComments(loadedComments);
+      // Ensure we have a valid array and filter out any invalid entries
+      const validComments = Array.isArray(loadedComments) 
+        ? loadedComments.filter(c => c && c.id && c.comment_text) 
+        : [];
+      
+      setComments(validComments);
     } catch (err) {
       const apiError = err as ApiError;
       const errorMessage = apiError.detail || 'Failed to load comments';
-      setError(errorMessage);
+      
+      // Only show error if it's not a 404 (no comments yet)
+      if (apiError.status_code !== 404) {
+        setError(errorMessage);
+      }
+      
       console.error('Failed to load comments:', err);
+      setComments([]); // Reset to empty array on error
     } finally {
       setIsLoading(false);
     }
@@ -180,7 +199,7 @@ export function CommentBox({ contentId, contentType }: CommentBoxProps) {
           onChange={(e) => setNewComment(e.target.value)}
           placeholder="Add a comment..."
           rows={3}
-          className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+          className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base text-black border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
           disabled={isSubmitting}
           aria-label="Comment text"
         />
@@ -217,7 +236,7 @@ export function CommentBox({ contentId, contentType }: CommentBoxProps) {
         </div>
       ) : (
         <div className="space-y-3" role="list" aria-label="Comments">
-          {comments.map((comment) => (
+          {comments.filter(comment => comment && comment.id).map((comment) => (
             <article key={comment.id} className="bg-gray-50 rounded-lg p-3 sm:p-4 border border-gray-200">
               {editingCommentId === comment.id ? (
                 <div className="space-y-2">
@@ -227,7 +246,7 @@ export function CommentBox({ contentId, contentType }: CommentBoxProps) {
                     value={editingText}
                     onChange={(e) => setEditingText(e.target.value)}
                     rows={3}
-                    className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                    className="w-full px-3 py-2 text-sm sm:text-base text-black border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                     disabled={isSubmitting}
                   />
                   <div className="flex justify-end space-x-2">

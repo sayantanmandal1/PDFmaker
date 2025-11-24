@@ -116,7 +116,7 @@ export default function DocumentEditorPage() {
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
-            <div>
+            <div className="flex-1">
               <button
                 onClick={() => router.push('/dashboard')}
                 className="text-gray-600 hover:text-gray-900 mb-2 flex items-center"
@@ -131,10 +131,15 @@ export default function DocumentEditorPage() {
                 {isWord ? 'Word Document' : 'PowerPoint Presentation'} • {project.topic}
               </p>
             </div>
-            <div className="text-right">
-              <p className="text-sm text-gray-600">
-                {isWord ? 'Section' : 'Slide'} {currentIndex + 1} of {totalItems}
-              </p>
+            <div className="flex items-center gap-4">
+              <div className="text-right">
+                <p className="text-sm text-gray-600">
+                  {isWord ? 'Section' : 'Slide'} {currentIndex + 1} of {totalItems}
+                </p>
+              </div>
+              {totalItems > 0 && (
+                <ExportButton projectId={projectId} projectName={project.name} />
+              )}
             </div>
           </div>
         </div>

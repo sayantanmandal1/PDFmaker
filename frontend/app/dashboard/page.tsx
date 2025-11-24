@@ -60,10 +60,13 @@ export default function DashboardPage() {
           break;
         case 'generating':
         case 'ready':
+        case 'ready_for_refinement':
+        case 'partially_generated':
           router.push(`/projects/${projectId}/editor`);
           break;
         default:
-          router.push(`/projects/${projectId}`);
+          // For any other status, go to configure page
+          router.push(`/projects/${projectId}/configure`);
       }
     }
   };
