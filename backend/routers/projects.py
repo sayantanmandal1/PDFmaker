@@ -59,7 +59,7 @@ async def get_projects(
     return ProjectListResponse(projects=projects)
 
 
-@router.post("", response_model=ProjectResponse, status_code=status.HTTP_201_CREATED)
+@router.post("")
 async def create_project(
     project_data: ProjectCreate,
     current_user: User = Depends(get_current_user),
@@ -72,7 +72,7 @@ async def create_project(
         project_data: Project creation data (name, document_type, topic)
         
     Returns:
-        Created project object
+        Created project object wrapped in a project key
     """
     project = ProjectService.create_project(
         db=db,
@@ -81,7 +81,7 @@ async def create_project(
         document_type=project_data.document_type,
         topic=project_data.topic
     )
-    return project
+    return {"project": project}
 
 
 @router.get("/{project_id}", response_model=ProjectResponse)
