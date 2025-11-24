@@ -236,7 +236,7 @@ export function CommentBox({ contentId, contentType }: CommentBoxProps) {
         </div>
       ) : (
         <div className="space-y-3" role="list" aria-label="Comments">
-          {comments.filter(comment => comment && comment.id).map((comment) => (
+          {(Array.isArray(comments) ? comments : []).filter(comment => comment && comment.id).map((comment) => (
             <article key={comment.id} className="bg-gray-50 rounded-lg p-3 sm:p-4 border border-gray-200">
               {editingCommentId === comment.id ? (
                 <div className="space-y-2">
