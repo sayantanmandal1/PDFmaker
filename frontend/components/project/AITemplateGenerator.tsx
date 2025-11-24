@@ -30,41 +30,22 @@ export function AITemplateGenerator({
       setError(null);
       setGeneratedTemplate(null);
 
-      const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('Authentication required');
-      }
-
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/projects/${projectId}/generate-template`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            topic,
-            document_type: documentType,
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to generate template');
-      }
-
-      const data = await response.json();
+      const { projectsApi } = await import('@/lib/projects-api');
+      
+      const data = await projectsApi.generateTemplate(projectId, {
+        topic,
+        document_type: documentType,
+      });
+      
       const items = documentType === 'word' 
         ? data.template.headers 
         : data.template.slide_titles;
       
-      setGeneratedTemplate(items);
-      setEditableTemplate([...items]);
+      setGeneratedTemplate(items || []);
+      setEditableTemplate([...(items || [])]);
     } catch (err: any) {
       console.error('Template generation error:', err);
-      setError(err.message || 'Failed to generate template');
+      setError(err.detail || err.message || 'Failed to generate template');
     } finally {
       setIsGenerating(false);
     }
