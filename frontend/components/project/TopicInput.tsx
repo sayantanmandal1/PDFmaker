@@ -18,7 +18,7 @@ export function TopicInput({ value, onChange, disabled }: TopicInputProps) {
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
         rows={4}
-        className="block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
+        className="block w-full text-gray-900 border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
         placeholder="Describe the main topic or theme for your document. Be as specific as possible to get better AI-generated content."
         required
       />
