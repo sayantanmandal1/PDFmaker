@@ -119,7 +119,7 @@ export function RegisterForm({ onSuccess, onSwitchToLogin }: RegisterFormProps) 
             required
             value={formData.name}
             onChange={handleInputChange}
-            className={`w-full px-3 py-2 text-sm sm:text-base border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+            className={`w-full px-3 py-2 text-sm sm:text-base text-gray-900 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
               formErrors.name ? 'border-red-300' : 'border-gray-300'
             }`}
             placeholder="Enter your full name"
@@ -145,7 +145,7 @@ export function RegisterForm({ onSuccess, onSwitchToLogin }: RegisterFormProps) 
             required
             value={formData.email}
             onChange={handleInputChange}
-            className={`w-full px-3 py-2 text-sm sm:text-base border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+            className={`w-full px-3 py-2 text-sm sm:text-base text-gray-900 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
               formErrors.email ? 'border-red-300' : 'border-gray-300'
             }`}
             placeholder="Enter your email"
