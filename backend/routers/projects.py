@@ -84,7 +84,7 @@ async def create_project(
     return {"project": project}
 
 
-@router.get("/{project_id}", response_model=ProjectResponse)
+@router.get("/{project_id}")
 async def get_project(
     project_id: UUID,
     current_user: User = Depends(get_current_user),
@@ -97,14 +97,25 @@ async def get_project(
         project_id: UUID of the project to retrieve
         
     Returns:
-        Project object if found and authorized
+        Project object with sections/slides if found and authorized
         
     Raises:
         404: If project not found
         403: If user not authorized to access the project
     """
     project = ProjectService.get_project(db, project_id, current_user.id)
-    return project
+    
+    # Include sections or slides based on document type
+    response = {"project": project}
+    
+    if project.document_type == "word":
+        sections = ContentService.get_project_sections(db, project_id)
+        response["sections"] = sections
+    elif project.document_type == "powerpoint":
+        slides = ContentService.get_project_slides(db, project_id)
+        response["slides"] = slides
+    
+    return response
 
 
 @router.delete("/{project_id}", response_model=ProjectDeleteResponse)
