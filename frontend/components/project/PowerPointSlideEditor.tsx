@@ -77,7 +77,7 @@ export function PowerPointSlideEditor({
           value={slideCount}
           onChange={handleSlideCountChange}
           placeholder="Enter number of slides (e.g., 10)"
-          className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base text-black border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           disabled={isSaving}
           aria-describedby="slide-count-help"
         />
@@ -112,7 +112,7 @@ export function PowerPointSlideEditor({
                   value={slide.title}
                   onChange={(e) => handleSlideTitleChange(index, e.target.value)}
                   placeholder={`Slide ${index + 1} title`}
-                  className="flex-1 px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="flex-1 px-3 sm:px-4 py-2 text-sm sm:text-base text-black border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   disabled={isSaving}
                   aria-label={`Title for slide ${index + 1}`}
                 />
