@@ -6,6 +6,7 @@ import { LoginForm } from '@/components/auth/LoginForm';
 import { RegisterForm } from '@/components/auth/RegisterForm';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEffect } from 'react';
+import LiquidEther from '@/components/background/background';
 
 export default function LoginPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -28,10 +29,25 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-black relative overflow-hidden flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8">
-      {/* Animated gradient background */}
+      {/* Animated LiquidEther background */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-1/2 -left-1/2 w-full h-full bg-gradient-to-br from-red-500/20 via-transparent to-transparent animate-pulse"></div>
-        <div className="absolute -bottom-1/2 -right-1/2 w-full h-full bg-gradient-to-tl from-yellow-500/20 via-transparent to-transparent animate-pulse" style={{ animationDelay: '1s' }}></div>
+        <LiquidEther
+          colors={['#5227FF', '#FF9FFC', '#B19EEF']}
+          mouseForce={20}
+          cursorSize={100}
+          isViscous={false}
+          viscous={30}
+          iterationsViscous={32}
+          iterationsPoisson={32}
+          resolution={0.5}
+          isBounce={false}
+          autoDemo={true}
+          autoSpeed={0.5}
+          autoIntensity={2.2}
+          takeoverDuration={0.25}
+          autoResumeDelay={3000}
+          autoRampDuration={0.6}
+        />
       </div>
 
       {/* Header with gradient accents */}
