@@ -113,7 +113,7 @@ export default function ConfigurePage() {
   if (isLoading) {
     return (
       <ProtectedRoute>
-        <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+        <div className="min-h-screen flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-transparent border-t-red-500 border-r-yellow-500 mx-auto"></div>
             <p className="mt-4 text-gray-300">Loading project...</p>
@@ -126,7 +126,7 @@ export default function ConfigurePage() {
   if (error && !project) {
     return (
       <ProtectedRoute>
-        <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+        <div className="min-h-screen flex items-center justify-center">
           <div className="text-center bg-white/5 backdrop-blur-md border border-white/10 rounded-lg p-8 max-w-md mx-4">
             <p className="text-red-400 mb-6">{error}</p>
             <button
@@ -143,7 +143,7 @@ export default function ConfigurePage() {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-[#0a0a0a]">
+      <div className="min-h-screen">
         {/* Glassmorphic Navigation */}
         <nav className="bg-white/5 backdrop-blur-md border-b border-white/10 sticky top-0 z-10">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

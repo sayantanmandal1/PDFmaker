@@ -46,7 +46,7 @@ export default function NewProjectPage() {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-[#0a0a0a] relative overflow-hidden">
+      <div className="min-h-screen relative overflow-hidden">
         {/* Animated gradient background */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute -top-1/2 -left-1/2 w-full h-full bg-gradient-to-br from-red-500/10 via-transparent to-transparent animate-pulse"></div>

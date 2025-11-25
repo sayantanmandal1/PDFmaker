@@ -70,7 +70,7 @@ export default function DocumentEditorPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-r-2 border-transparent bg-gradient-to-r from-red-500 to-yellow-500 mx-auto" style={{ borderRadius: '50%' }}></div>
           <p className="mt-4 text-gray-300">Loading project...</p>
@@ -81,7 +81,7 @@ export default function DocumentEditorPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-4">
+      <div className="min-h-screen flex items-center justify-center p-4">
         <div className="bg-white/5 backdrop-blur-md border border-white/10 p-8 rounded-lg shadow-xl max-w-md w-full">
           <div className="text-red-500 mb-4">
             <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -111,7 +111,7 @@ export default function DocumentEditorPage() {
   const currentItem = items[currentIndex];
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a]">
+    <div className="min-h-screen">
       {/* Header */}
       <div className="bg-white/5 backdrop-blur-md border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
