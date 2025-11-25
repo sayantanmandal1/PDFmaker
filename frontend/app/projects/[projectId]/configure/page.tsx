@@ -115,7 +115,7 @@ export default function ConfigurePage() {
       <ProtectedRoute>
         <div className="min-h-screen flex items-center justify-center">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-transparent border-t-red-500 border-r-yellow-500 mx-auto"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-4 border-transparent border-t-red-500 border-r-yellow-500 mx-auto"></div>
             <p className="mt-4 text-gray-300">Loading project...</p>
           </div>
         </div>
