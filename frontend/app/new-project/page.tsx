@@ -86,7 +86,7 @@ export default function NewProjectPage() {
                 AI-Powered Document
               </span>
             </h2>
-            <p className="text-base sm:text-lg text-gray-300 max-w-2xl mx-auto">
+            <p className="text-base sm:text-lg text-gray-300 max-w-2xl mx-auto text-center">
               Set up your project details below. You'll configure the document structure and generate content in the next step.
             </p>
           </div>
