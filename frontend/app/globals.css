@@ -1,31 +1,150 @@
 @import "tailwindcss";
 
+/* CSS Custom Properties for Theme */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Background Colors */
+  --bg-primary: #0a0a0a;
+  --bg-secondary: #1a1a1a;
+  --bg-glass: rgba(255, 255, 255, 0.05);
+  --bg-glass-strong: rgba(255, 255, 255, 0.08);
+  
+  /* Accent Colors */
+  --accent-red-light: #ef4444;
+  --accent-red: #dc2626;
+  --accent-red-dark: #b91c1c;
+  --accent-yellow-light: #fbbf24;
+  --accent-yellow: #f59e0b;
+  --accent-yellow-dark: #d97706;
+  
+  /* Text Colors */
+  --text-primary: #ffffff;
+  --text-secondary: #d1d5db;
+  --text-muted: #9ca3af;
+  
+  /* Status Colors */
+  --status-success: #10b981;
+  --status-warning: #f59e0b;
+  --status-error: #ef4444;
+  --status-info: #3b82f6;
+  
+  /* Blur Effects */
+  --blur-light: 8px;
+  --blur-medium: 12px;
+  --blur-strong: 16px;
+  
+  /* Spacing Scale */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-2xl: 48px;
+  --spacing-3xl: 64px;
+  
+  /* Border */
+  --border-glass: rgba(255, 255, 255, 0.1);
+  --border-glass-strong: rgba(255, 255, 255, 0.15);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Root and Body Styling */
+html {
+  background: var(--bg-primary);
+  min-height: 100vh;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--bg-primary);
+  color: var(--text-primary);
   font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Toast animations */
+/* Ensure all text inherits proper color */
+* {
+  box-sizing: border-box;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: var(--text-primary);
+  margin: 0;
+}
+
+p {
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+a {
+  color: var(--text-primary);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+a:hover {
+  color: var(--accent-yellow);
+}
+
+/* Glassmorphism Utility Classes */
+.glass-effect {
+  background: var(--bg-glass);
+  backdrop-filter: blur(var(--blur-medium));
+  -webkit-backdrop-filter: blur(var(--blur-medium));
+  border: 1px solid var(--border-glass);
+}
+
+.glass-effect-strong {
+  background: var(--bg-glass-strong);
+  backdrop-filter: blur(var(--blur-strong));
+  -webkit-backdrop-filter: blur(var(--blur-strong));
+  border: 1px solid var(--border-glass-strong);
+}
+
+.glass-effect-light {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(var(--blur-light));
+  -webkit-backdrop-filter: blur(var(--blur-light));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Gradient Utility Classes */
+.gradient-primary {
+  background: linear-gradient(135deg, var(--accent-red-light) 0%, var(--accent-yellow) 100%);
+}
+
+.gradient-secondary {
+  background: linear-gradient(135deg, var(--accent-yellow) 0%, var(--accent-red-light) 100%);
+}
+
+.gradient-text {
+  background: linear-gradient(135deg, var(--accent-red-light) 0%, var(--accent-yellow) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Glow Effects */
+.glow-red {
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.3);
+}
+
+.glow-yellow {
+  box-shadow: 0 0 20px rgba(251, 191, 36, 0.3);
+}
+
+.glow-gradient {
+  box-shadow: 0 0 30px rgba(239, 68, 68, 0.2), 0 0 60px rgba(251, 191, 36, 0.2);
+}
+
+/* Animation Keyframes */
 @keyframes slide-in {
   from {
     transform: translateX(100%);
@@ -37,6 +156,176 @@ body {
   }
 }
 
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scale-in {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes spin-gradient {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Animation Utility Classes */
 .animate-slide-in {
   animation: slide-in 0.3s ease-out;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out;
+}
+
+.animate-scale-in {
+  animation: scale-in 0.3s ease-out;
+}
+
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradient-shift 3s ease infinite;
+}
+
+/* Transition Utilities */
+.transition-smooth {
+  transition: all 0.3s ease;
+}
+
+.transition-fast {
+  transition: all 0.2s ease;
+}
+
+/* Hover Effects */
+.hover-scale:hover {
+  transform: scale(1.02);
+}
+
+.hover-scale-lg:hover {
+  transform: scale(1.05);
+}
+
+.hover-glow:hover {
+  box-shadow: 0 0 30px rgba(239, 68, 68, 0.3), 0 0 60px rgba(251, 191, 36, 0.3);
+}
+
+.hover-glow-red:hover {
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
+}
+
+.hover-glow-yellow:hover {
+  box-shadow: 0 0 20px rgba(251, 191, 36, 0.4);
+}
+
+/* Focus Effects */
+.focus-glow-red:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.3);
+}
+
+.focus-glow-yellow:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.3);
+}
+
+/* Border Utilities */
+.border-glass {
+  border: 1px solid var(--border-glass);
+}
+
+.border-glass-strong {
+  border: 1px solid var(--border-glass-strong);
+}
+
+/* Background Utilities */
+.bg-primary {
+  background: var(--bg-primary);
+}
+
+.bg-secondary {
+  background: var(--bg-secondary);
+}
+
+.bg-glass {
+  background: var(--bg-glass);
+}
+
+/* Text Utilities */
+.text-primary {
+  color: var(--text-primary);
+}
+
+.text-secondary {
+  color: var(--text-secondary);
+}
+
+.text-muted {
+  color: var(--text-muted);
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--bg-glass-strong);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* Fallback for browsers that don't support backdrop-filter */
+@supports not (backdrop-filter: blur(12px)) {
+  .glass-effect,
+  .glass-effect-strong,
+  .glass-effect-light {
+    background: rgba(26, 26, 26, 0.9);
+  }
 }

@@ -113,10 +113,10 @@ export default function ConfigurePage() {
   if (isLoading) {
     return (
       <ProtectedRoute>
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading project...</p>
+            <div className="animate-spin rounded-full h-12 w-12 border-transparent border-t-red-500 border-r-yellow-500 mx-auto"></div>
+            <p className="mt-4 text-gray-300">Loading project...</p>
           </div>
         </div>
       </ProtectedRoute>
@@ -126,12 +126,12 @@ export default function ConfigurePage() {
   if (error && !project) {
     return (
       <ProtectedRoute>
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-          <div className="text-center">
-            <p className="text-red-600 mb-4">{error}</p>
+        <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+          <div className="text-center bg-white/5 backdrop-blur-md border border-white/10 rounded-lg p-8 max-w-md mx-4">
+            <p className="text-red-400 mb-6">{error}</p>
             <button
               onClick={handleBack}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              className="px-6 py-2 bg-gradient-to-r from-red-500 to-yellow-500 text-white rounded-lg hover:from-red-600 hover:to-yellow-600 hover:scale-105 transition-all duration-200"
             >
               Back to Dashboard
             </button>
@@ -143,14 +143,16 @@ export default function ConfigurePage() {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-gray-50">
-        <nav className="bg-white shadow">
+      <div className="min-h-screen bg-[#0a0a0a]">
+        {/* Glassmorphic Navigation */}
+        <nav className="bg-white/5 backdrop-blur-md border-b border-white/10 sticky top-0 z-10">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between h-16">
               <div className="flex items-center">
                 <button
                   onClick={handleBack}
-                  className="mr-4 text-gray-600 hover:text-gray-900"
+                  className="mr-4 text-gray-300 hover:text-white transition-colors duration-200 hover:scale-110"
+                  aria-label="Back to dashboard"
                 >
                   <svg
                     className="w-6 h-6"
@@ -166,7 +168,7 @@ export default function ConfigurePage() {
                     />
                   </svg>
                 </button>
-                <h1 className="text-xl font-semibold text-gray-900">
+                <h1 className="text-xl font-semibold text-white">
                   Configure Project
                 </h1>
               </div>
@@ -174,30 +176,51 @@ export default function ConfigurePage() {
           </div>
         </nav>
 
-        <main className="max-w-4xl mx-auto py-6 sm:px-6 lg:px-8">
-          <div className="px-4 py-6 sm:px-0">
-            {/* Project Info */}
-            <div className="bg-white shadow rounded-lg p-6 mb-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">
+        <main className="max-w-4xl mx-auto py-8 sm:px-6 lg:px-8">
+          <div className="px-4 sm:px-0 space-y-6">
+            {/* Project Info - Glassmorphic Card */}
+            <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-lg p-6 shadow-lg shadow-black/20">
+              <h2 className="text-2xl font-bold text-white mb-3">
                 {project?.name}
               </h2>
-              <div className="flex gap-4 text-sm text-gray-600">
-                <span className="capitalize">Type: {project?.document_type}</span>
-                <span>•</span>
-                <span>Topic: {project?.topic}</span>
+              <div className="flex flex-wrap gap-4 text-sm text-gray-300">
+                <span className="capitalize flex items-center gap-2">
+                  <span className="text-yellow-500">Type:</span>
+                  <span className="text-white">{project?.document_type}</span>
+                </span>
+                <span className="text-white/30">•</span>
+                <span className="flex items-center gap-2">
+                  <span className="text-yellow-500">Topic:</span>
+                  <span className="text-white">{project?.topic}</span>
+                </span>
               </div>
             </div>
 
-            {/* Error Message */}
+            {/* Error Message - Red-tinted Glassmorphic */}
             {error && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-                <p className="text-red-800">{error}</p>
+              <div className="bg-red-500/10 backdrop-blur-md border border-red-500/30 rounded-lg p-4 shadow-lg shadow-red-500/10">
+                <div className="flex items-start gap-3">
+                  <svg
+                    className="w-5 h-5 text-red-400 shrink-0 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                  <p className="text-red-300 flex-1">{error}</p>
+                </div>
               </div>
             )}
 
-            {/* AI Template Generator */}
+            {/* AI Template Generator - Glassmorphic Container */}
             {project && (
-              <div className="bg-white shadow rounded-lg p-6 mb-6">
+              <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-lg p-6 shadow-lg shadow-black/20">
                 <AITemplateGenerator
                   projectId={projectId}
                   documentType={project.document_type}
@@ -208,8 +231,8 @@ export default function ConfigurePage() {
               </div>
             )}
 
-            {/* Configuration Editor */}
-            <div className="bg-white shadow rounded-lg p-6 mb-6">
+            {/* Configuration Editor - Glassmorphic Container */}
+            <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-lg p-6 shadow-lg shadow-black/20">
               {project?.document_type === 'word' ? (
                 <WordOutlineEditor
                   sections={sections}
@@ -229,9 +252,9 @@ export default function ConfigurePage() {
               )}
             </div>
 
-            {/* Content Generation */}
+            {/* Content Generation - Glassmorphic Container */}
             {project && (sections.length > 0 || slides.length > 0) && (
-              <div className="bg-white shadow rounded-lg p-6">
+              <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-lg p-6 shadow-lg shadow-black/20">
                 <GenerationProgress
                   projectId={projectId}
                   documentType={project.document_type}

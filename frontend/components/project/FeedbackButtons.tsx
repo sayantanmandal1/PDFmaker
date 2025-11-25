@@ -49,16 +49,16 @@ export function FeedbackButtons({ contentId, contentType, initialFeedback = null
       role="group"
       aria-label="Content feedback"
     >
-      <span className="text-xs sm:text-sm text-gray-600 sm:mr-2">How is this content?</span>
+      <span className="text-xs sm:text-sm text-gray-300 sm:mr-2">How is this content?</span>
       
       <div className="flex items-center gap-2">
         <button
           onClick={() => handleFeedback('like')}
           disabled={isSubmitting}
-          className={`flex items-center space-x-1 px-2.5 sm:px-3 py-1.5 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 ${
+          className={`flex items-center space-x-1 px-2.5 sm:px-3 py-1.5 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 min-h-[44px] ${
             feedback === 'like'
-              ? 'bg-green-100 text-green-700 border-2 border-green-500'
-              : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-2 border-transparent'
+              ? 'bg-green-500/20 text-green-400 border-2 border-green-500 scale-105'
+              : 'bg-white/10 text-gray-300 hover:bg-white/20 hover:scale-105 border-2 border-transparent'
           } ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
           aria-label="Like this content"
           aria-pressed={feedback === 'like'}
@@ -83,10 +83,10 @@ export function FeedbackButtons({ contentId, contentType, initialFeedback = null
         <button
           onClick={() => handleFeedback('dislike')}
           disabled={isSubmitting}
-          className={`flex items-center space-x-1 px-2.5 sm:px-3 py-1.5 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 ${
+          className={`flex items-center space-x-1 px-2.5 sm:px-3 py-1.5 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 min-h-[44px] ${
             feedback === 'dislike'
-              ? 'bg-red-100 text-red-700 border-2 border-red-500'
-              : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-2 border-transparent'
+              ? 'bg-red-500/20 text-red-400 border-2 border-red-500 scale-105'
+              : 'bg-white/10 text-gray-300 hover:bg-white/20 hover:scale-105 border-2 border-transparent'
           } ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
           aria-label="Dislike this content"
           aria-pressed={feedback === 'dislike'}

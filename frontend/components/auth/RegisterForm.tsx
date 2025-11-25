@@ -100,26 +100,29 @@ export function RegisterForm({ onSuccess, onSwitchToLogin }: RegisterFormProps) 
   };
 
   return (
-    <div className="w-full max-w-md mx-auto px-4 sm:px-6">
-      <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6" aria-label="Registration form">
+    <div className="w-full max-w-md mx-auto">
+      <form onSubmit={handleSubmit} className="space-y-5" aria-label="Registration form">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 text-center mb-4 sm:mb-6">
+          <h2 className="text-xl sm:text-2xl font-bold text-white text-center mb-6">
             Create Account
           </h2>
         </div>
 
         {error && (
           <div 
-            className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 sm:px-4 sm:py-3 rounded-md text-sm sm:text-base"
+            className="bg-red-500/10 backdrop-blur-sm border border-red-500/30 text-red-400 px-4 py-3 rounded-lg text-sm flex items-center gap-2"
             role="alert"
             aria-live="polite"
           >
-            {error}
+            <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>{error}</span>
           </div>
         )}
 
         <div>
-          <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-2">
             Full Name
           </label>
           <input
@@ -130,22 +133,27 @@ export function RegisterForm({ onSuccess, onSwitchToLogin }: RegisterFormProps) 
             required
             value={formData.name}
             onChange={handleInputChange}
-            className={`w-full px-3 py-2 text-sm sm:text-base text-gray-900 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-              formErrors.name ? 'border-red-300' : 'border-gray-300'
+            className={`w-full px-4 py-2.5 bg-black/40 border rounded-lg text-white placeholder-gray-500 transition-all duration-200 focus:outline-none focus:bg-white/5 focus:backdrop-blur-md focus:border-transparent focus:ring-2 focus:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed ${
+              formErrors.name 
+                ? 'border-red-500 focus:ring-red-500 focus:shadow-red-500/20' 
+                : 'border-white/20 focus:ring-red-500/50 focus:shadow-red-500/20'
             }`}
             placeholder="Enter your full name"
             aria-invalid={!!formErrors.name}
             aria-describedby={formErrors.name ? 'name-error' : undefined}
           />
           {formErrors.name && (
-            <p id="name-error" className="mt-1 text-xs sm:text-sm text-red-600" role="alert">
+            <p id="name-error" className="mt-2 text-sm text-red-400 flex items-center gap-1" role="alert">
+              <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
               {formErrors.name}
             </p>
           )}
         </div>
 
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
             Email Address
           </label>
           <input
@@ -156,22 +164,27 @@ export function RegisterForm({ onSuccess, onSwitchToLogin }: RegisterFormProps) 
             required
             value={formData.email}
             onChange={handleInputChange}
-            className={`w-full px-3 py-2 text-sm sm:text-base text-gray-900 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-              formErrors.email ? 'border-red-300' : 'border-gray-300'
+            className={`w-full px-4 py-2.5 bg-black/40 border rounded-lg text-white placeholder-gray-500 transition-all duration-200 focus:outline-none focus:bg-white/5 focus:backdrop-blur-md focus:border-transparent focus:ring-2 focus:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed ${
+              formErrors.email 
+                ? 'border-red-500 focus:ring-red-500 focus:shadow-red-500/20' 
+                : 'border-white/20 focus:ring-red-500/50 focus:shadow-red-500/20'
             }`}
             placeholder="Enter your email"
             aria-invalid={!!formErrors.email}
             aria-describedby={formErrors.email ? 'email-error' : undefined}
           />
           {formErrors.email && (
-            <p id="email-error" className="mt-1 text-xs sm:text-sm text-red-600" role="alert">
+            <p id="email-error" className="mt-2 text-sm text-red-400 flex items-center gap-1" role="alert">
+              <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
               {formErrors.email}
             </p>
           )}
         </div>
 
         <div>
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">
             Password
           </label>
           <div className="relative">
@@ -183,8 +196,10 @@ export function RegisterForm({ onSuccess, onSwitchToLogin }: RegisterFormProps) 
               required
               value={formData.password}
               onChange={handleInputChange}
-              className={`w-full px-3 py-2 pr-10 text-sm sm:text-base text-gray-900 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                formErrors.password ? 'border-red-300' : 'border-gray-300'
+              className={`w-full px-4 py-2.5 pr-12 bg-black/40 border rounded-lg text-white placeholder-gray-500 transition-all duration-200 focus:outline-none focus:bg-white/5 focus:backdrop-blur-md focus:border-transparent focus:ring-2 focus:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed ${
+                formErrors.password 
+                  ? 'border-red-500 focus:ring-red-500 focus:shadow-red-500/20' 
+                  : 'border-white/20 focus:ring-red-500/50 focus:shadow-red-500/20'
               }`}
               style={{ WebkitTextSecurity: showPassword ? 'none' : 'disc' } as React.CSSProperties}
               placeholder="Create a password (min. 6 characters)"
@@ -194,7 +209,7 @@ export function RegisterForm({ onSuccess, onSwitchToLogin }: RegisterFormProps) 
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-700 focus:outline-none transition-colors"
+              className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-white focus:outline-none transition-all duration-200"
               aria-label={showPassword ? 'Hide password' : 'Show password'}
             >
               {showPassword ? (
@@ -205,14 +220,17 @@ export function RegisterForm({ onSuccess, onSwitchToLogin }: RegisterFormProps) 
             </button>
           </div>
           {formErrors.password && (
-            <p id="password-error" className="mt-1 text-xs sm:text-sm text-red-600" role="alert">
+            <p id="password-error" className="mt-2 text-sm text-red-400 flex items-center gap-1" role="alert">
+              <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
               {formErrors.password}
             </p>
           )}
         </div>
 
         <div>
-          <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-300 mb-2">
             Confirm Password
           </label>
           <div className="relative">
@@ -224,8 +242,10 @@ export function RegisterForm({ onSuccess, onSwitchToLogin }: RegisterFormProps) 
               required
               value={confirmPassword}
               onChange={handleInputChange}
-              className={`w-full px-3 py-2 pr-10 text-sm sm:text-base text-gray-900 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                formErrors.confirmPassword ? 'border-red-300' : 'border-gray-300'
+              className={`w-full px-4 py-2.5 pr-12 bg-black/40 border rounded-lg text-white placeholder-gray-500 transition-all duration-200 focus:outline-none focus:bg-white/5 focus:backdrop-blur-md focus:border-transparent focus:ring-2 focus:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed ${
+                formErrors.confirmPassword 
+                  ? 'border-red-500 focus:ring-red-500 focus:shadow-red-500/20' 
+                  : 'border-white/20 focus:ring-red-500/50 focus:shadow-red-500/20'
               }`}
               style={{ WebkitTextSecurity: showConfirmPassword ? 'none' : 'disc' } as React.CSSProperties}
               placeholder="Confirm your password"
@@ -235,7 +255,7 @@ export function RegisterForm({ onSuccess, onSwitchToLogin }: RegisterFormProps) 
             <button
               type="button"
               onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-700 focus:outline-none transition-colors"
+              className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-white focus:outline-none transition-all duration-200"
               aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
             >
               {showConfirmPassword ? (
@@ -246,7 +266,10 @@ export function RegisterForm({ onSuccess, onSwitchToLogin }: RegisterFormProps) 
             </button>
           </div>
           {formErrors.confirmPassword && (
-            <p id="confirm-password-error" className="mt-1 text-xs sm:text-sm text-red-600" role="alert">
+            <p id="confirm-password-error" className="mt-2 text-sm text-red-400 flex items-center gap-1" role="alert">
+              <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
               {formErrors.confirmPassword}
             </p>
           )}
@@ -256,7 +279,7 @@ export function RegisterForm({ onSuccess, onSwitchToLogin }: RegisterFormProps) 
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full flex justify-center py-2.5 sm:py-3 px-4 border border-transparent rounded-md shadow-sm text-sm sm:text-base font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="w-full flex justify-center py-3 px-4 rounded-lg text-base font-medium text-white bg-gradient-to-r from-red-500 to-yellow-500 hover:from-red-600 hover:to-yellow-600 hover:shadow-lg hover:shadow-red-500/50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-black focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:scale-105 active:scale-95 disabled:transform-none"
             aria-busy={isLoading}
           >
             {isLoading ? 'Creating Account...' : 'Create Account'}
@@ -265,12 +288,12 @@ export function RegisterForm({ onSuccess, onSwitchToLogin }: RegisterFormProps) 
 
         {onSwitchToLogin && (
           <div className="text-center">
-            <p className="text-xs sm:text-sm text-gray-600">
+            <p className="text-sm text-gray-400">
               Already have an account?{' '}
               <button
                 type="button"
                 onClick={onSwitchToLogin}
-                className="font-medium text-blue-600 hover:text-blue-500 focus:outline-none focus:underline"
+                className="font-medium text-transparent bg-gradient-to-r from-red-500 to-yellow-500 bg-clip-text hover:from-red-400 hover:to-yellow-400 focus:outline-none focus:underline transition-all duration-200"
                 aria-label="Switch to login form"
               >
                 Sign in

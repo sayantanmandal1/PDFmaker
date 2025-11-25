@@ -90,9 +90,9 @@ export function SlideCard({ slide, onUpdate }: SlideCardProps) {
   };
 
   return (
-    <article className="bg-white rounded-lg shadow-md overflow-hidden">
+    <article className="bg-white/5 backdrop-blur-md border border-white/10 rounded-lg shadow-xl overflow-hidden">
       {/* Slide Title */}
-      <header className="bg-gradient-to-r from-purple-600 to-purple-700 px-4 sm:px-6 py-3 sm:py-4">
+      <header className="bg-gradient-to-r from-red-500 to-yellow-500 px-4 sm:px-6 py-3 sm:py-4">
         <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-white break-words">{slide.title}</h2>
       </header>
 
@@ -104,21 +104,21 @@ export function SlideCard({ slide, onUpdate }: SlideCardProps) {
               <textarea
                 value={editedContent}
                 onChange={(e) => setEditedContent(e.target.value)}
-                className="w-full min-h-[200px] px-4 py-3 text-sm sm:text-base text-black border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-y"
+                className="w-full min-h-[200px] px-4 py-3 text-sm sm:text-base text-white bg-white/5 border border-white/20 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent resize-y transition-all duration-200"
                 placeholder="Enter slide content (keep it concise for presentations)..."
               />
               <div className="flex gap-3">
                 <button
                   onClick={handleSaveEdit}
                   disabled={isSaving || !editedContent.trim()}
-                  className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors font-medium"
+                  className="px-6 py-2 bg-gradient-to-r from-red-500 to-yellow-500 text-white rounded-md hover:from-red-600 hover:to-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium"
                 >
                   {isSaving ? 'Saving...' : 'Save Changes'}
                 </button>
                 <button
                   onClick={handleCancelEdit}
                   disabled={isSaving}
-                  className="px-6 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 disabled:opacity-50 transition-colors font-medium"
+                  className="px-6 py-2 bg-white/10 text-white rounded-md hover:bg-white/20 disabled:opacity-50 transition-all duration-200 font-medium"
                 >
                   Cancel
                 </button>
@@ -129,7 +129,7 @@ export function SlideCard({ slide, onUpdate }: SlideCardProps) {
               <div className="flex justify-end mb-2">
                 <button
                   onClick={handleEdit}
-                  className="text-purple-600 hover:text-purple-700 font-medium text-sm flex items-center gap-2"
+                  className="text-yellow-400 hover:text-yellow-300 font-medium text-sm flex items-center gap-2 transition-colors duration-200"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -138,7 +138,7 @@ export function SlideCard({ slide, onUpdate }: SlideCardProps) {
                 </button>
               </div>
               <div className="prose prose-sm sm:prose max-w-none">
-                <div className="text-sm sm:text-base text-gray-800 leading-relaxed whitespace-pre-wrap break-words">
+                <div className="text-sm sm:text-base text-gray-200 leading-relaxed whitespace-pre-wrap break-words">
                   {slide.content}
                 </div>
               </div>
@@ -147,7 +147,7 @@ export function SlideCard({ slide, onUpdate }: SlideCardProps) {
         ) : (
           <div className="text-center py-8 sm:py-12">
             <svg
-              className="w-12 h-12 sm:w-16 sm:h-16 mx-auto text-gray-300 mb-4"
+              className="w-12 h-12 sm:w-16 sm:h-16 mx-auto text-gray-500 mb-4"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -160,8 +160,8 @@ export function SlideCard({ slide, onUpdate }: SlideCardProps) {
                 d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"
               />
             </svg>
-            <p className="text-gray-500 text-base sm:text-lg">No content generated yet</p>
-            <p className="text-gray-400 text-xs sm:text-sm mt-2">
+            <p className="text-gray-300 text-base sm:text-lg">No content generated yet</p>
+            <p className="text-gray-500 text-xs sm:text-sm mt-2">
               Content will appear here after generation
             </p>
           </div>
@@ -169,7 +169,7 @@ export function SlideCard({ slide, onUpdate }: SlideCardProps) {
 
         {/* Feedback and Comments */}
         {slide.content && (
-          <div className="mt-6 pt-6 border-t border-gray-200 space-y-6">
+          <div className="mt-6 pt-6 border-t border-white/10 space-y-6">
             {/* Feedback Buttons */}
             <FeedbackButtons
               contentId={slide.id}
@@ -180,7 +180,7 @@ export function SlideCard({ slide, onUpdate }: SlideCardProps) {
             <div>
               <button
                 onClick={handleToggleRefinement}
-                className="mb-4 text-purple-600 hover:text-purple-700 font-medium text-sm flex items-center space-x-2"
+                className="mb-4 text-yellow-400 hover:text-yellow-300 font-medium text-sm flex items-center space-x-2 transition-colors duration-200"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -200,7 +200,7 @@ export function SlideCard({ slide, onUpdate }: SlideCardProps) {
               )}
 
               {error && !isRefining && (
-                <div className="mt-4 flex items-start space-x-2 text-red-600 text-sm bg-red-50 p-3 rounded-lg">
+                <div className="mt-4 flex items-start space-x-2 text-red-400 text-sm bg-red-500/10 backdrop-blur-sm border border-red-500/20 p-3 rounded-lg">
                   <svg className="w-5 h-5 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                 </svg>
@@ -208,7 +208,7 @@ export function SlideCard({ slide, onUpdate }: SlideCardProps) {
                   <p className="font-medium">{error}</p>
                   <button
                     onClick={() => setError(null)}
-                    className="mt-2 text-red-700 hover:text-red-800 underline text-xs"
+                    className="mt-2 text-red-300 hover:text-red-200 underline text-xs transition-colors duration-200"
                   >
                     Dismiss
                   </button>
@@ -218,7 +218,7 @@ export function SlideCard({ slide, onUpdate }: SlideCardProps) {
             </div>
 
             {/* Comments Section */}
-            <div className="pt-6 border-t border-gray-200">
+            <div className="pt-6 border-t border-white/10">
               <CommentBox
                 contentId={slide.id}
                 contentType="slide"
@@ -229,8 +229,8 @@ export function SlideCard({ slide, onUpdate }: SlideCardProps) {
       </div>
 
       {/* Metadata Footer */}
-      <footer className="bg-gray-50 px-4 sm:px-6 py-3 border-t border-gray-200">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs sm:text-sm text-gray-600">
+      <footer className="bg-white/5 backdrop-blur-sm px-4 sm:px-6 py-3 border-t border-white/10">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs sm:text-sm text-gray-400">
           <div className="flex items-center">
             <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path

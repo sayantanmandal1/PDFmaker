@@ -61,4 +61,13 @@ export const contentApi = {
   async getSlideComments(slideId: string): Promise<Comment[]> {
     return apiClient.get(`/api/slides/${slideId}/comments`);
   },
+
+  // Update endpoints for manual editing
+  async updateSection(sectionId: string, data: { content: string }): Promise<{ section: Section }> {
+    return apiClient.put(`/api/sections/${sectionId}`, data);
+  },
+
+  async updateSlide(slideId: string, data: { content: string }): Promise<{ slide: Slide }> {
+    return apiClient.put(`/api/slides/${slideId}`, data);
+  },
 };

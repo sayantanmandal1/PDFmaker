@@ -73,12 +73,12 @@ export function WordOutlineEditor({
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="space-y-4 sm:space-y-6 bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-4 sm:p-6">
       <div>
-        <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2 sm:mb-4">
+        <h3 className="text-base sm:text-lg font-semibold text-white mb-2 sm:mb-4">
           Document Outline
         </h3>
-        <p className="text-xs sm:text-sm text-gray-600 mb-4">
+        <p className="text-xs sm:text-sm text-gray-300 mb-4">
           Add section headers to structure your Word document. You can reorder them using the arrow buttons.
         </p>
       </div>
@@ -93,14 +93,14 @@ export function WordOutlineEditor({
           onChange={(e) => setNewSectionHeader(e.target.value)}
           onKeyPress={handleKeyPress}
           placeholder="Enter section header (e.g., Introduction, Background)"
-          className="flex-1 px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="flex-1 px-3 sm:px-4 py-2 text-sm sm:text-base bg-black/40 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-red-500/50 focus:bg-white/5 transition-all duration-200"
           disabled={isSaving}
           aria-label="Section header"
         />
         <button
           onClick={handleAddSection}
           disabled={!newSectionHeader.trim() || isSaving}
-          className="px-4 sm:px-6 py-2 text-sm sm:text-base bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 whitespace-nowrap"
+          className="px-4 sm:px-6 py-2 text-sm sm:text-base bg-gradient-to-r from-red-500 to-yellow-500 text-white rounded-lg hover:from-red-600 hover:to-yellow-600 disabled:from-gray-600 disabled:to-gray-600 disabled:cursor-not-allowed transition-all duration-200 font-medium focus:outline-none focus:ring-2 focus:ring-red-500/50 whitespace-nowrap"
         >
           Add Section
         </button>
@@ -112,11 +112,11 @@ export function WordOutlineEditor({
           {sections.map((section, index) => (
             <div
               key={index}
-              className="flex items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-white border border-gray-200 rounded-lg hover:border-gray-300 transition-colors"
+              className="flex items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg hover:bg-white/10 hover:border-white/20 hover:scale-[1.01] transition-all duration-200"
               role="listitem"
             >
               <div className="flex-1 min-w-0">
-                <span className="text-sm sm:text-base text-gray-900 font-medium break-words">
+                <span className="text-sm sm:text-base text-white font-medium break-words">
                   {index + 1}. {section.header}
                 </span>
               </div>
@@ -126,7 +126,7 @@ export function WordOutlineEditor({
                 <button
                   onClick={() => handleMoveUp(index)}
                   disabled={index === 0 || isSaving}
-                  className="p-1.5 sm:p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded disabled:text-gray-300 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="p-1.5 sm:p-2 text-gray-300 hover:text-white hover:bg-white/10 rounded disabled:text-gray-600 disabled:cursor-not-allowed transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500/50"
                   aria-label={`Move section ${index + 1} up`}
                   title="Move up"
                 >
@@ -148,7 +148,7 @@ export function WordOutlineEditor({
                 <button
                   onClick={() => handleMoveDown(index)}
                   disabled={index === sections.length - 1 || isSaving}
-                  className="p-1.5 sm:p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded disabled:text-gray-300 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="p-1.5 sm:p-2 text-gray-300 hover:text-white hover:bg-white/10 rounded disabled:text-gray-600 disabled:cursor-not-allowed transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500/50"
                   aria-label={`Move section ${index + 1} down`}
                   title="Move down"
                 >
@@ -173,7 +173,7 @@ export function WordOutlineEditor({
               <button
                 onClick={() => handleRemoveSection(index)}
                 disabled={isSaving}
-                className="p-1.5 sm:p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded disabled:text-gray-300 disabled:cursor-not-allowed transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-red-500"
+                className="p-1.5 sm:p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded disabled:text-gray-600 disabled:cursor-not-allowed transition-all duration-200 shrink-0 focus:outline-none focus:ring-2 focus:ring-red-500/50"
                 aria-label={`Remove section ${index + 1}`}
                 title="Remove section"
               >
@@ -196,19 +196,19 @@ export function WordOutlineEditor({
           ))}
         </div>
       ) : (
-        <div className="text-center py-8 sm:py-12 bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg">
-          <p className="text-sm sm:text-base text-gray-500 px-4">
+        <div className="text-center py-8 sm:py-12 bg-white/5 backdrop-blur-sm border-2 border-dashed border-white/10 rounded-lg">
+          <p className="text-sm sm:text-base text-gray-400 px-4">
             No sections added yet. Add your first section header above.
           </p>
         </div>
       )}
 
       {/* Save Button */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 pt-4 border-t border-gray-200">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 pt-4 border-t border-white/10">
         <button
           onClick={onSave}
           disabled={sections.length === 0 || isSaving}
-          className="w-full sm:w-auto px-6 sm:px-8 py-2.5 sm:py-3 text-sm sm:text-base bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+          className="w-full sm:w-auto px-6 sm:px-8 py-2.5 sm:py-3 text-sm sm:text-base bg-gradient-to-r from-red-500 to-yellow-500 text-white rounded-lg hover:from-red-600 hover:to-yellow-600 disabled:from-gray-600 disabled:to-gray-600 disabled:cursor-not-allowed transition-all duration-200 font-medium focus:outline-none focus:ring-2 focus:ring-red-500/50"
           aria-busy={isSaving}
         >
           {isSaving ? 'Saving...' : 'Save Configuration'}
@@ -216,7 +216,7 @@ export function WordOutlineEditor({
 
         {saveSuccess && (
           <div 
-            className="flex items-center gap-2 text-green-600"
+            className="flex items-center gap-2 text-yellow-400"
             role="status"
             aria-live="polite"
           >

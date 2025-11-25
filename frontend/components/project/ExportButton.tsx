@@ -56,10 +56,10 @@ export default function ExportButton({ projectId, projectName, documentType }: E
     <button
       onClick={handleExport}
       disabled={isExporting}
-      className={`flex items-center px-4 sm:px-6 py-2 sm:py-2.5 rounded-md text-sm sm:text-base font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 ${
+      className={`flex items-center px-4 sm:px-6 py-2 sm:py-2.5 rounded-md text-sm sm:text-base font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 ${
         isExporting
-          ? 'bg-gray-400 text-white cursor-not-allowed'
-          : 'bg-green-600 text-white hover:bg-green-700'
+          ? 'bg-white/10 text-gray-400 cursor-not-allowed'
+          : 'bg-gradient-to-r from-red-500 to-yellow-500 text-white hover:from-red-600 hover:to-yellow-600 hover:scale-105'
       }`}
       aria-busy={isExporting}
       aria-label={`Export ${documentType === 'word' ? 'document' : 'presentation'}`}

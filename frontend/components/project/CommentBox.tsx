@@ -169,7 +169,7 @@ export function CommentBox({ contentId, contentType }: CommentBoxProps) {
 
   return (
     <div className="space-y-4">
-      <h3 className="text-base sm:text-lg font-semibold text-gray-800 flex items-center">
+      <h3 className="text-base sm:text-lg font-semibold text-gray-200 flex items-center">
         <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
           <path
             strokeLinecap="round"
@@ -183,7 +183,7 @@ export function CommentBox({ contentId, contentType }: CommentBoxProps) {
 
       {error && (
         <div 
-          className="bg-red-50 border border-red-200 text-red-700 px-3 sm:px-4 py-2 sm:py-3 rounded-lg text-xs sm:text-sm"
+          className="bg-red-500/10 backdrop-blur-sm border border-red-500/20 text-red-400 px-3 sm:px-4 py-2 sm:py-3 rounded-lg text-xs sm:text-sm"
           role="alert"
         >
           {error}
@@ -199,7 +199,7 @@ export function CommentBox({ contentId, contentType }: CommentBoxProps) {
           onChange={(e) => setNewComment(e.target.value)}
           placeholder="Add a comment..."
           rows={3}
-          className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base text-black border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+          className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base text-white bg-white/5 border border-white/20 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none transition-all duration-200"
           disabled={isSubmitting}
           aria-label="Comment text"
         />
@@ -207,7 +207,7 @@ export function CommentBox({ contentId, contentType }: CommentBoxProps) {
           <button
             type="submit"
             disabled={isSubmitting || !newComment.trim()}
-            className="px-3 sm:px-4 py-2 text-sm sm:text-base bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            className="px-3 sm:px-4 py-2 text-sm sm:text-base bg-gradient-to-r from-red-500 to-yellow-500 text-white rounded-lg hover:from-red-600 hover:to-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
             aria-busy={isSubmitting}
           >
             {isSubmitting ? 'Adding...' : 'Add Comment'}
@@ -219,11 +219,11 @@ export function CommentBox({ contentId, contentType }: CommentBoxProps) {
       {isLoading ? (
         <div className="text-center py-4" role="status" aria-label="Loading comments">
           <LoadingSpinner size="md" label="Loading comments" />
-          <p className="text-gray-500 mt-2 text-sm">Loading comments...</p>
+          <p className="text-gray-300 mt-2 text-sm">Loading comments...</p>
         </div>
       ) : comments.length === 0 ? (
-        <div className="text-center py-6 sm:py-8 bg-gray-50 rounded-lg">
-          <svg className="w-10 h-10 sm:w-12 sm:h-12 mx-auto text-gray-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <div className="text-center py-6 sm:py-8 bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg">
+          <svg className="w-10 h-10 sm:w-12 sm:h-12 mx-auto text-gray-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -231,13 +231,13 @@ export function CommentBox({ contentId, contentType }: CommentBoxProps) {
               d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
             />
           </svg>
-          <p className="text-gray-500 text-sm sm:text-base">No comments yet</p>
-          <p className="text-gray-400 text-xs sm:text-sm mt-1">Be the first to comment!</p>
+          <p className="text-gray-300 text-sm sm:text-base">No comments yet</p>
+          <p className="text-gray-500 text-xs sm:text-sm mt-1">Be the first to comment!</p>
         </div>
       ) : (
         <div className="space-y-3" role="list" aria-label="Comments">
           {(Array.isArray(comments) ? comments : []).filter(comment => comment && comment.id).map((comment) => (
-            <article key={comment.id} className="bg-gray-50 rounded-lg p-3 sm:p-4 border border-gray-200">
+            <article key={comment.id} className="bg-white/5 backdrop-blur-sm rounded-lg p-3 sm:p-4 border border-white/10 hover:bg-white/10 transition-all duration-200">
               {editingCommentId === comment.id ? (
                 <div className="space-y-2">
                   <label htmlFor={`edit-comment-${comment.id}`} className="sr-only">Edit comment</label>
@@ -246,21 +246,21 @@ export function CommentBox({ contentId, contentType }: CommentBoxProps) {
                     value={editingText}
                     onChange={(e) => setEditingText(e.target.value)}
                     rows={3}
-                    className="w-full px-3 py-2 text-sm sm:text-base text-black border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                    className="w-full px-3 py-2 text-sm sm:text-base text-white bg-white/5 border border-white/20 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none transition-all duration-200"
                     disabled={isSubmitting}
                   />
                   <div className="flex justify-end space-x-2">
                     <button
                       onClick={cancelEditing}
                       disabled={isSubmitting}
-                      className="px-3 py-1.5 text-gray-600 hover:text-gray-800 text-xs sm:text-sm focus:outline-none focus:underline"
+                      className="px-3 py-1.5 text-gray-300 hover:text-white text-xs sm:text-sm focus:outline-none focus:underline transition-colors duration-200"
                     >
                       Cancel
                     </button>
                     <button
                       onClick={() => handleEditComment(comment.id)}
                       disabled={isSubmitting || !editingText.trim()}
-                      className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                      className="px-3 py-1.5 bg-gradient-to-r from-red-500 to-yellow-500 text-white rounded-lg hover:from-red-600 hover:to-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-all duration-200"
                       aria-busy={isSubmitting}
                     >
                       {isSubmitting ? 'Saving...' : 'Save'}
@@ -272,14 +272,14 @@ export function CommentBox({ contentId, contentType }: CommentBoxProps) {
                   <div className="flex items-start justify-between mb-2 gap-2">
                     <div className="flex items-center space-x-2 min-w-0 flex-1">
                       <div 
-                        className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-semibold text-sm shrink-0"
+                        className="w-8 h-8 bg-gradient-to-r from-red-500 to-yellow-500 rounded-full flex items-center justify-center text-white font-semibold text-sm shrink-0"
                         aria-hidden="true"
                       >
                         {user?.name?.charAt(0).toUpperCase() || 'U'}
                       </div>
                       <div className="min-w-0">
-                        <p className="text-xs sm:text-sm font-medium text-gray-900 truncate">{user?.name || 'User'}</p>
-                        <time className="text-xs text-gray-500" dateTime={comment.created_at}>
+                        <p className="text-xs sm:text-sm font-medium text-gray-200 truncate">{user?.name || 'User'}</p>
+                        <time className="text-xs text-gray-400" dateTime={comment.created_at}>
                           {formatDate(comment.created_at)}
                         </time>
                       </div>
@@ -289,7 +289,7 @@ export function CommentBox({ contentId, contentType }: CommentBoxProps) {
                       <div className="flex space-x-1 shrink-0">
                         <button
                           onClick={() => startEditing(comment)}
-                          className="p-1 text-gray-400 hover:text-blue-600 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"
+                          className="p-1 text-gray-400 hover:text-yellow-400 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-yellow-500 rounded"
                           aria-label="Edit comment"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -303,7 +303,7 @@ export function CommentBox({ contentId, contentType }: CommentBoxProps) {
                         </button>
                         <button
                           onClick={() => handleDeleteComment(comment.id)}
-                          className="p-1 text-gray-400 hover:text-red-600 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 rounded"
+                          className="p-1 text-gray-400 hover:text-red-400 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 rounded"
                           aria-label="Delete comment"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -318,7 +318,7 @@ export function CommentBox({ contentId, contentType }: CommentBoxProps) {
                       </div>
                     )}
                   </div>
-                  <p className="text-xs sm:text-sm text-gray-700 whitespace-pre-wrap wrap-break-word">{comment.comment_text}</p>
+                  <p className="text-xs sm:text-sm text-gray-300 whitespace-pre-wrap wrap-break-word">{comment.comment_text}</p>
                 </>
               )}
             </article>
