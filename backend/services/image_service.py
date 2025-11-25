@@ -69,14 +69,14 @@ class ImageService:
             logger.error(f"Error searching images from {source}: {e}")
             return []
     
-    def search_images_with_fallback(self, query: str, max_results: int = 10) -> List[ImageResult]:
+    def search_images_with_fallback(self, query: str, max_results: int = 3) -> List[ImageResult]:
         """
         Search for images with automatic fallback chain.
-        Tries DuckDuckGo -> Bing -> Google until results are found.
+        Tries Wikimedia -> DuckDuckGo -> Bing -> Google until results are found.
         
         Args:
             query: Search query string
-            max_results: Maximum number of results to return
+            max_results: Maximum number of results to return (default: 3 to avoid rate limits)
             
         Returns:
             List of ImageResult objects, ranked by relevance
@@ -86,8 +86,9 @@ class ImageService:
         for source in sources:
             logger.info(f"Attempting to search images from {source}")
             try:
-                # Request more results than needed for filtering
-                results = self.search_images(query, source, max_results * 2)
+                # Request slightly more results than needed for filtering
+                search_count = min(max_results + 2, 10)  # Cap at 10 to avoid rate limits
+                results = self.search_images(query, source, search_count)
                 if results:
                     # Rank and filter results
                     ranked_results = self._rank_image_results(results, query)
@@ -537,10 +538,16 @@ class ImageService:
         
         headers = self.config.get_headers()
         
+        # Use more specific User-Agent for Wikimedia
+        if 'wikimedia.org' in url or 'wikipedia.org' in url:
+            headers = {
+                "User-Agent": "DocumentGenerator/1.0 (Educational tool; https://github.com/yourproject; contact@example.com)"
+            }
+        
         try:
-            # Add delay for Wikimedia URLs to avoid rate limiting
+            # Add longer delay for Wikimedia URLs to avoid rate limiting
             if 'wikimedia.org' in url or 'wikipedia.org' in url:
-                time.sleep(1.5)  # 1.5s delay for Wikimedia downloads to avoid 429 errors
+                time.sleep(3.0)  # 3 second delay for Wikimedia downloads
             
             response = self.session.get(
                 url,
@@ -552,7 +559,12 @@ class ImageService:
             # Handle rate limiting gracefully
             if response.status_code == 429:
                 logger.warning(f"Rate limited when downloading from {url}")
-                return None
+                # Wait longer and try once more
+                time.sleep(5.0)
+                response = self.session.get(url, headers=headers, timeout=timeout, stream=True)
+                if response.status_code == 429:
+                    logger.error(f"Still rate limited after retry from {url}")
+                    return None
             
             response.raise_for_status()
             

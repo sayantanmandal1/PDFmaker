@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from typing import List
 from uuid import UUID
 import logging
+import time
 
 from database import get_db
 from dependencies.auth import get_current_user
@@ -322,16 +323,26 @@ async def generate_content(
                         )
                         logger.info(f"Image search query for section '{section.header}': {search_query}")
                         
-                        # Search for images with fallback chain
-                        image_results = image_service.search_images_with_fallback(search_query, max_results=5)
+                        # Search for images with fallback chain (reduced to 2 to avoid rate limits)
+                        image_results = image_service.search_images_with_fallback(search_query, max_results=2)
                         
                         if image_results:
                             # Try to download the first available image that hasn't been used
+                            download_attempts = 0
+                            max_download_attempts = 2  # Limit download attempts to avoid rate limiting
+                            
                             for image_result in image_results:
+                                if download_attempts >= max_download_attempts:
+                                    logger.info(f"Reached max download attempts ({max_download_attempts}) for section '{section.header}'")
+                                    break
+                                
                                 # Skip if this image was already used
                                 if image_result.url in used_image_urls:
                                     logger.debug(f"Skipping already used image: {image_result.url}")
                                     continue
+                                
+                                download_attempts += 1
+                                logger.info(f"Attempting to download image {download_attempts}/{max_download_attempts} for section '{section.header}'")
                                 
                                 image_data = image_service.download_image(image_result.url)
                                 
@@ -360,6 +371,10 @@ async def generate_content(
                 except Exception as img_error:
                     # Log image integration error but don't fail content generation
                     logger.error(f"Image integration failed for section '{section.header}': {img_error}")
+                
+                # Add delay after processing images to avoid rate limiting
+                if needs_image:
+                    time.sleep(2.0)  # 2 second delay between sections with images
                 
                 # Update section with generated content and image metadata
                 ContentService.update_section(
@@ -441,16 +456,26 @@ async def generate_content(
                         )
                         logger.info(f"Image search query for slide '{slide.title}': {search_query}")
                         
-                        # Search for images with fallback chain
-                        image_results = image_service.search_images_with_fallback(search_query, max_results=5)
+                        # Search for images with fallback chain (reduced to 2 to avoid rate limits)
+                        image_results = image_service.search_images_with_fallback(search_query, max_results=2)
                         
                         if image_results:
                             # Try to download the first available image that hasn't been used
+                            download_attempts = 0
+                            max_download_attempts = 2  # Limit download attempts to avoid rate limiting
+                            
                             for image_result in image_results:
+                                if download_attempts >= max_download_attempts:
+                                    logger.info(f"Reached max download attempts ({max_download_attempts}) for slide '{slide.title}'")
+                                    break
+                                
                                 # Skip if this image was already used
                                 if image_result.url in used_image_urls:
                                     logger.debug(f"Skipping already used image: {image_result.url}")
                                     continue
+                                
+                                download_attempts += 1
+                                logger.info(f"Attempting to download image {download_attempts}/{max_download_attempts} for slide '{slide.title}'")
                                 
                                 image_data = image_service.download_image(image_result.url)
                                 
@@ -482,6 +507,10 @@ async def generate_content(
                 except Exception as img_error:
                     # Log image integration error but don't fail content generation
                     logger.error(f"Image integration failed for slide '{slide.title}': {img_error}")
+                
+                # Add delay after processing images to avoid rate limiting
+                if needs_image:
+                    time.sleep(2.0)  # 2 second delay between slides with images
                 
                 # Update slide with generated content
                 ContentService.update_slide(
