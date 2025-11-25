@@ -46,6 +46,14 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     log_to_file: bool = False
     
+    # Image Scraping
+    image_scraping_timeout: int = 10
+    image_scraping_max_retries: int = 3
+    image_scraping_retry_delay: int = 2
+    image_download_timeout: int = 15
+    image_max_file_size_mb: int = 5
+    image_scraping_delay: float = 1.0
+    
     def get_allowed_origins(self) -> List[str]:
         """Get CORS origins as a list."""
         if isinstance(self.allowed_origins, str):

@@ -6,6 +6,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from typing import List
 from uuid import UUID
+import logging
 
 from database import get_db
 from dependencies.auth import get_current_user
@@ -34,6 +35,7 @@ from services.project_service import ProjectService
 from services.content_service import ContentService
 from services.llm_service import LLMService
 from services.export_service import ExportService
+from services.image_service import ImageService
 from exceptions import (
     ValidationException,
     ResourceNotFoundException,
@@ -42,6 +44,7 @@ from exceptions import (
 )
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 @router.get("", response_model=ProjectListResponse)
@@ -277,6 +280,9 @@ async def generate_content(
             detail="LLM service configuration error"
         )
     
+    # Initialize Image service
+    image_service = ImageService()
+    
     # Handle Word document generation
     if project.document_type == "word":
         sections = ContentService.get_project_sections(db, project_id)
@@ -300,19 +306,71 @@ async def generate_content(
                     context=None
                 )
                 
-                # Update section with generated content
+                # Determine if this section needs an image
+                image_url = None
+                image_placement = None
+                
+                try:
+                    needs_image = llm_service.determine_image_need(content)
+                    logger.info(f"Section '{section.header}' needs image: {needs_image}")
+                    
+                    if needs_image:
+                        # Generate image search query
+                        search_query = llm_service.generate_image_search_query(content)
+                        logger.info(f"Image search query for section '{section.header}': {search_query}")
+                        
+                        # Search for images with fallback chain
+                        image_results = image_service.search_images_with_fallback(search_query, max_results=5)
+                        
+                        if image_results:
+                            # Try to download the first available image
+                            for image_result in image_results:
+                                image_data = image_service.download_image(image_result.url)
+                                
+                                if image_data:
+                                    # Optimize image for Word document
+                                    optimized_data = image_service.optimize_for_document(image_data, "word")
+                                    
+                                    if optimized_data:
+                                        # Store the image URL
+                                        image_url = image_result.url
+                                        
+                                        # Determine image placement
+                                        image_placement = llm_service.determine_image_placement(content, "word")
+                                        
+                                        logger.info(f"Successfully integrated image for section '{section.header}' (placement: {image_placement})")
+                                        break
+                                else:
+                                    logger.warning(f"Failed to download image from {image_result.url}")
+                            
+                            if not image_url:
+                                logger.warning(f"Failed to download any images for section '{section.header}'")
+                        else:
+                            logger.warning(f"No images found for section '{section.header}'")
+                
+                except Exception as img_error:
+                    # Log image integration error but don't fail content generation
+                    logger.error(f"Image integration failed for section '{section.header}': {img_error}")
+                
+                # Update section with generated content and image metadata
                 ContentService.update_section(
                     db=db,
                     section_id=section.id,
                     content=content
                 )
                 
+                # Update image metadata if available
+                if image_url:
+                    section.image_url = image_url
+                    section.image_placement = image_placement
+                    db.commit()
+                
                 generated_count += 1
                 
             except Exception as e:
                 # Log the error and continue with other sections
+                logger.error(f"Content generation failed for section '{section.header}': {e}")
                 failed_sections.append(section.header)
-                # In production, you would log this error properly
                 continue
         
         # Update project status
@@ -357,6 +415,56 @@ async def generate_content(
                     context=None
                 )
                 
+                # Determine if this slide needs an image
+                image_url = None
+                image_placement = None
+                image_position = None
+                
+                try:
+                    needs_image = llm_service.determine_image_need(content)
+                    logger.info(f"Slide '{slide.title}' needs image: {needs_image}")
+                    
+                    if needs_image:
+                        # Generate image search query
+                        search_query = llm_service.generate_image_search_query(content)
+                        logger.info(f"Image search query for slide '{slide.title}': {search_query}")
+                        
+                        # Search for images with fallback chain
+                        image_results = image_service.search_images_with_fallback(search_query, max_results=5)
+                        
+                        if image_results:
+                            # Try to download the first available image
+                            for image_result in image_results:
+                                image_data = image_service.download_image(image_result.url)
+                                
+                                if image_data:
+                                    # Optimize image for PowerPoint
+                                    optimized_data = image_service.optimize_for_document(image_data, "powerpoint")
+                                    
+                                    if optimized_data:
+                                        # Store the image URL
+                                        image_url = image_result.url
+                                        
+                                        # Determine image placement (background or foreground)
+                                        image_placement = llm_service.determine_image_placement(content, "powerpoint")
+                                        
+                                        # Set default position
+                                        image_position = "center"
+                                        
+                                        logger.info(f"Successfully integrated image for slide '{slide.title}' (placement: {image_placement})")
+                                        break
+                                else:
+                                    logger.warning(f"Failed to download image from {image_result.url}")
+                            
+                            if not image_url:
+                                logger.warning(f"Failed to download any images for slide '{slide.title}'")
+                        else:
+                            logger.warning(f"No images found for slide '{slide.title}'")
+                
+                except Exception as img_error:
+                    # Log image integration error but don't fail content generation
+                    logger.error(f"Image integration failed for slide '{slide.title}': {img_error}")
+                
                 # Update slide with generated content
                 ContentService.update_slide(
                     db=db,
@@ -364,12 +472,19 @@ async def generate_content(
                     content=content
                 )
                 
+                # Update image metadata if available
+                if image_url:
+                    slide.image_url = image_url
+                    slide.image_placement = image_placement
+                    slide.image_position = image_position
+                    db.commit()
+                
                 generated_count += 1
                 
             except Exception as e:
                 # Log the error and continue with other slides
+                logger.error(f"Content generation failed for slide '{slide.title}': {e}")
                 failed_slides.append(slide.title)
-                # In production, you would log this error properly
                 continue
         
         # Update project status

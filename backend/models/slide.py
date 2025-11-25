@@ -20,6 +20,9 @@ class Slide(Base):
     title = Column(String(500), nullable=False)
     content = Column(Text, nullable=True)
     position = Column(Integer, nullable=False)
+    image_url = Column(Text, nullable=True)
+    image_placement = Column(String(20), nullable=True)  # 'background', 'foreground'
+    image_position = Column(String(50), nullable=True)  # 'center', 'left', 'right', etc.
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 

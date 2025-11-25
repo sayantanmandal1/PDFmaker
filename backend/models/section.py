@@ -20,6 +20,8 @@ class Section(Base):
     header = Column(String(500), nullable=False)
     content = Column(Text, nullable=True)
     position = Column(Integer, nullable=False)
+    image_url = Column(Text, nullable=True)
+    image_placement = Column(String(20), nullable=True)  # 'inline', 'wrapped'
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 

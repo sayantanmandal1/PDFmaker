@@ -288,3 +288,211 @@ Conclusion"""
         headers = [line for line in lines if not line[0].isdigit() and line[0] != '-' and line[0] != '*']
         
         return headers if headers else lines  # Fallback to all lines if filtering removes everything
+    
+    def determine_image_need(self, content: str) -> bool:
+        """
+        Determine if the given content would benefit from images.
+        
+        Args:
+            content: The content to analyze (section text or slide content)
+            
+        Returns:
+            True if images would enhance the content, False otherwise
+            
+        Raises:
+            RateLimitError: If rate limit is exceeded
+            APIError: If API error occurs
+            APIConnectionError: If connection fails
+        """
+        prompt = f"""Analyze the following content and determine if it would benefit from images.
+
+Content:
+{content}
+
+Consider:
+- Would images make this content more engaging or easier to understand?
+- Is the content visual in nature (describing objects, places, processes, data)?
+- Would images add value beyond the text?
+
+Respond with ONLY "YES" or "NO" - nothing else."""
+        
+        system_message = "You are a professional document designer analyzing whether content needs images. Respond with only YES or NO."
+        
+        response = self._call_openai(prompt, system_message, max_tokens=10)
+        
+        # Parse the response - look for YES/NO
+        response_upper = response.upper().strip()
+        return "YES" in response_upper
+    
+    def generate_image_search_query(self, content: str) -> str:
+        """
+        Generate an effective image search query based on content.
+        
+        Args:
+            content: The content to generate a search query for
+            
+        Returns:
+            A concise, effective search query string
+            
+        Raises:
+            RateLimitError: If rate limit is exceeded
+            APIError: If API error occurs
+            APIConnectionError: If connection fails
+        """
+        prompt = f"""Generate a concise image search query for the following content.
+
+Content:
+{content}
+
+Requirements:
+- MAXIMUM 5 words
+- Focus on the main visual concept
+- Use simple, descriptive keywords
+- Professional and appropriate
+
+Examples:
+- "Eiffel Tower Paris"
+- "business team meeting"
+- "mountain landscape sunset"
+
+Respond with ONLY the search query (2-5 words) - nothing else."""
+        
+        system_message = "You are a professional image researcher. Create a short search query of 2-5 words maximum. Respond with only the query."
+        
+        response = self._call_openai(prompt, system_message, max_tokens=20)
+        
+        # Clean up the response and ensure it's concise
+        query = response.strip()
+        words = query.split()
+        
+        # If response is too long, take first 5 words
+        if len(words) > 5:
+            query = ' '.join(words[:5])
+        
+        return query
+    
+    def determine_slide_layout(self, content: str, has_image: bool) -> str:
+        """
+        Determine the optimal slide layout based on content and image presence.
+        
+        Args:
+            content: The slide content
+            has_image: Whether an image will be included
+            
+        Returns:
+            Layout name: "title_slide", "title_and_content", "two_content", 
+                        "content_with_caption", or "blank"
+            
+        Raises:
+            RateLimitError: If rate limit is exceeded
+            APIError: If API error occurs
+            APIConnectionError: If connection fails
+        """
+        prompt = f"""Determine the optimal PowerPoint slide layout for the following content.
+
+Content:
+{content}
+
+Has Image: {"Yes" if has_image else "No"}
+
+Available layouts:
+- title_slide: For introductions and section breaks (minimal content, large title)
+- title_and_content: Standard layout for most slides (title + bullet points)
+- two_content: For comparisons or parallel concepts (two columns)
+- content_with_caption: For image-heavy slides (large image with caption)
+- blank: For custom layouts with background images (no predefined structure)
+
+Consider:
+- Amount of text content
+- Whether an image is present
+- Content structure (single topic vs comparison)
+- Visual balance
+
+Respond with ONLY the layout name - nothing else."""
+        
+        system_message = "You are a professional presentation designer selecting optimal slide layouts. Respond with only the layout name."
+        
+        response = self._call_openai(prompt, system_message, max_tokens=20)
+        
+        # Parse and validate the response
+        response_lower = response.strip().lower()
+        valid_layouts = ["title_slide", "title_and_content", "two_content", "content_with_caption", "blank"]
+        
+        for layout in valid_layouts:
+            if layout in response_lower:
+                return layout
+        
+        # Default fallback
+        return "title_and_content"
+    
+    def determine_image_placement(self, content: str, doc_type: str) -> str:
+        """
+        Determine whether an image should be placed in the background or foreground.
+        
+        Args:
+            content: The content that will accompany the image
+            doc_type: Either "word" or "powerpoint"
+            
+        Returns:
+            Placement strategy: "background", "foreground", "inline", or "wrapped"
+            
+        Raises:
+            RateLimitError: If rate limit is exceeded
+            APIError: If API error occurs
+            APIConnectionError: If connection fails
+            ValueError: If doc_type is invalid
+        """
+        if doc_type not in ["word", "powerpoint"]:
+            raise ValueError("doc_type must be 'word' or 'powerpoint'")
+        
+        if doc_type == "powerpoint":
+            prompt = f"""Determine the optimal image placement for a PowerPoint slide.
+
+Content:
+{content}
+
+Placement options:
+- background: Image behind all content with transparency (for inspirational/atmospheric images)
+- foreground: Image positioned in content area alongside text (for specific objects/diagrams)
+
+Consider:
+- Content density (heavy text = foreground; light text = background)
+- Content type (data/facts = foreground; inspirational = background)
+- Image purpose (illustrative = foreground; atmospheric = background)
+
+Respond with ONLY "background" or "foreground" - nothing else."""
+            
+        else:  # word
+            prompt = f"""Determine the optimal image placement for a Word document.
+
+Content:
+{content}
+
+Placement options:
+- inline: Image embedded directly in text flow (breaks text)
+- wrapped: Image with text wrapping around it (text flows around image)
+
+Consider:
+- Content flow and readability
+- Image relevance to surrounding text
+- Document structure
+
+Respond with ONLY "inline" or "wrapped" - nothing else."""
+        
+        system_message = "You are a professional document designer determining optimal image placement. Respond with only the placement option."
+        
+        response = self._call_openai(prompt, system_message, max_tokens=10)
+        
+        # Parse and validate the response
+        response_lower = response.strip().lower()
+        
+        if doc_type == "powerpoint":
+            if "background" in response_lower:
+                return "background"
+            else:
+                return "foreground"
+        else:  # word
+            if "wrapped" in response_lower:
+                return "wrapped"
+            else:
+                return "inline"

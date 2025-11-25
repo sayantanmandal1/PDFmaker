@@ -43,6 +43,8 @@ class SectionCreate(BaseModel):
     header: str = Field(..., min_length=1, max_length=500)
     content: Optional[str] = None
     position: int = Field(..., ge=0)
+    image_url: Optional[str] = None
+    image_placement: Optional[str] = None
 
 
 class SectionUpdate(BaseModel):
@@ -50,6 +52,8 @@ class SectionUpdate(BaseModel):
     header: Optional[str] = Field(None, min_length=1, max_length=500)
     content: Optional[str] = None
     position: Optional[int] = Field(None, ge=0)
+    image_url: Optional[str] = None
+    image_placement: Optional[str] = None
 
 
 class SectionResponse(BaseModel):
@@ -59,6 +63,8 @@ class SectionResponse(BaseModel):
     header: str
     content: Optional[str]
     position: int
+    image_url: Optional[str] = None
+    image_placement: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 
@@ -91,6 +97,9 @@ class SlideCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=500)
     content: Optional[str] = None
     position: int = Field(..., ge=0)
+    image_url: Optional[str] = None
+    image_placement: Optional[str] = None
+    image_position: Optional[str] = None
 
 
 class SlideUpdate(BaseModel):
@@ -98,6 +107,9 @@ class SlideUpdate(BaseModel):
     title: Optional[str] = Field(None, min_length=1, max_length=500)
     content: Optional[str] = None
     position: Optional[int] = Field(None, ge=0)
+    image_url: Optional[str] = None
+    image_placement: Optional[str] = None
+    image_position: Optional[str] = None
 
 
 class SlideResponse(BaseModel):
@@ -107,6 +119,9 @@ class SlideResponse(BaseModel):
     title: str
     content: Optional[str]
     position: int
+    image_url: Optional[str] = None
+    image_placement: Optional[str] = None
+    image_position: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 
