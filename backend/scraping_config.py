@@ -80,7 +80,7 @@ class ScrapingConfig:
     DOWNLOAD_TIMEOUT: int = 15
     MAX_RETRIES: int = 3
     RETRY_DELAY: int = 2  # seconds
-    SCRAPING_DELAY: float = 1.0  # seconds between requests
+    SCRAPING_DELAY: float = 2.0  # seconds between requests (increased to avoid rate limiting)
     
     # Image constraints
     MAX_FILE_SIZE_MB: int = 5

@@ -296,6 +296,7 @@ async def generate_content(
         # Generate content for each section
         generated_count = 0
         failed_sections = []
+        used_image_urls = set()  # Track used images to avoid duplicates
         
         for section in sections:
             try:
@@ -315,16 +316,23 @@ async def generate_content(
                     logger.info(f"Section '{section.header}' needs image: {needs_image}")
                     
                     if needs_image:
-                        # Generate image search query
-                        search_query = llm_service.generate_image_search_query(content)
+                        # Generate image search query using both header and content for better variety
+                        search_query = llm_service.generate_image_search_query(
+                            f"Section: {section.header}\n\n{content}"
+                        )
                         logger.info(f"Image search query for section '{section.header}': {search_query}")
                         
                         # Search for images with fallback chain
                         image_results = image_service.search_images_with_fallback(search_query, max_results=5)
                         
                         if image_results:
-                            # Try to download the first available image
+                            # Try to download the first available image that hasn't been used
                             for image_result in image_results:
+                                # Skip if this image was already used
+                                if image_result.url in used_image_urls:
+                                    logger.debug(f"Skipping already used image: {image_result.url}")
+                                    continue
+                                
                                 image_data = image_service.download_image(image_result.url)
                                 
                                 if image_data:
@@ -332,8 +340,9 @@ async def generate_content(
                                     optimized_data = image_service.optimize_for_document(image_data, "word")
                                     
                                     if optimized_data:
-                                        # Store the image URL
+                                        # Store the image URL and mark as used
                                         image_url = image_result.url
+                                        used_image_urls.add(image_url)
                                         
                                         # Determine image placement
                                         image_placement = llm_service.determine_image_placement(content, "word")
@@ -405,6 +414,7 @@ async def generate_content(
         # Generate content for each slide
         generated_count = 0
         failed_slides = []
+        used_image_urls = set()  # Track used images to avoid duplicates
         
         for slide in slides:
             try:
@@ -425,16 +435,23 @@ async def generate_content(
                     logger.info(f"Slide '{slide.title}' needs image: {needs_image}")
                     
                     if needs_image:
-                        # Generate image search query
-                        search_query = llm_service.generate_image_search_query(content)
+                        # Generate image search query using both title and content for better variety
+                        search_query = llm_service.generate_image_search_query(
+                            f"Slide: {slide.title}\n\n{content}"
+                        )
                         logger.info(f"Image search query for slide '{slide.title}': {search_query}")
                         
                         # Search for images with fallback chain
                         image_results = image_service.search_images_with_fallback(search_query, max_results=5)
                         
                         if image_results:
-                            # Try to download the first available image
+                            # Try to download the first available image that hasn't been used
                             for image_result in image_results:
+                                # Skip if this image was already used
+                                if image_result.url in used_image_urls:
+                                    logger.debug(f"Skipping already used image: {image_result.url}")
+                                    continue
+                                
                                 image_data = image_service.download_image(image_result.url)
                                 
                                 if image_data:
@@ -442,8 +459,9 @@ async def generate_content(
                                     optimized_data = image_service.optimize_for_document(image_data, "powerpoint")
                                     
                                     if optimized_data:
-                                        # Store the image URL
+                                        # Store the image URL and mark as used
                                         image_url = image_result.url
+                                        used_image_urls.add(image_url)
                                         
                                         # Determine image placement (background or foreground)
                                         image_placement = llm_service.determine_image_placement(content, "powerpoint")

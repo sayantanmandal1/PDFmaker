@@ -175,6 +175,9 @@ class ImageService:
         config = self.config.get_source_config("wikimedia")
         
         try:
+            # Add longer delay to respect rate limits (Wikimedia is strict)
+            time.sleep(1.0)  # 1 second delay between requests
+            
             # Wikimedia requires a proper User-Agent
             headers = {
                 "User-Agent": "PDFMaker/1.0 (Educational Document Generator; contact@example.com)"
@@ -199,6 +202,12 @@ class ImageService:
                 headers=headers,
                 timeout=config["timeout"]
             )
+            
+            # Check for rate limiting
+            if response.status_code == 429:
+                logger.warning("Wikimedia rate limit exceeded, skipping this source")
+                return []
+            
             response.raise_for_status()
             
             data = response.json()
@@ -529,12 +538,22 @@ class ImageService:
         headers = self.config.get_headers()
         
         try:
+            # Add delay for Wikimedia URLs to avoid rate limiting
+            if 'wikimedia.org' in url or 'wikipedia.org' in url:
+                time.sleep(1.5)  # 1.5s delay for Wikimedia downloads to avoid 429 errors
+            
             response = self.session.get(
                 url,
                 headers=headers,
                 timeout=timeout,
                 stream=True
             )
+            
+            # Handle rate limiting gracefully
+            if response.status_code == 429:
+                logger.warning(f"Rate limited when downloading from {url}")
+                return None
+            
             response.raise_for_status()
             
             # Check file size
@@ -560,6 +579,27 @@ class ImageService:
         except requests.Timeout:
             logger.error(f"Timeout downloading image from {url}")
             return None
+        except requests.HTTPError as e:
+            # Handle rate limiting with retry
+            if e.response.status_code == 429:
+                logger.warning(f"Rate limited downloading from {url}, waiting before retry...")
+                time.sleep(2.0)  # Wait 2 seconds
+                try:
+                    # Retry once
+                    response = self.session.get(url, headers=headers, timeout=timeout, stream=True)
+                    response.raise_for_status()
+                    image_data = response.content
+                    try:
+                        Image.open(BytesIO(image_data))
+                        return image_data
+                    except:
+                        return None
+                except:
+                    logger.error(f"Retry failed for {url}")
+                    return None
+            else:
+                logger.error(f"HTTP error downloading image from {url}: {e}")
+                return None
         except requests.RequestException as e:
             logger.error(f"Error downloading image from {url}: {e}")
             return None

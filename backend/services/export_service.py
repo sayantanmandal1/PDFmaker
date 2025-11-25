@@ -511,9 +511,12 @@ class ExportService:
             placement = slide_data.image_placement or 'foreground'
             position = slide_data.image_position or 'center'
             
-            # Get slide dimensions
-            slide_width = slide.width
-            slide_height = slide.height
+            # Get slide dimensions from the presentation
+            # Note: Slide objects don't have width/height, we get them from the parent presentation
+            # Access the presentation through the slide's parent
+            prs = slide.part.package.presentation_part.presentation
+            slide_width = prs.slide_width
+            slide_height = prs.slide_height
             
             if placement == 'background':
                 # Add as background image (full slide)

@@ -87,28 +87,36 @@ class StylingService:
             colors = StylingService.get_theme_colors(theme_name)
             
             # Apply theme to all slides
-            for slide in presentation.slides:
-                # Set background color
-                background = slide.background
-                fill = background.fill
-                fill.solid()
-                fill.fore_color.rgb = PptxRGBColor(*colors["background"])
-                
-                # Style title shapes
-                if slide.shapes.title:
-                    title_frame = slide.shapes.title.text_frame
-                    for paragraph in title_frame.paragraphs:
-                        for run in paragraph.runs:
-                            run.font.color.rgb = PptxRGBColor(*colors["primary"])
-                            run.font.bold = True
-                
-                # Style other text shapes
-                for shape in slide.shapes:
-                    if hasattr(shape, "text_frame") and shape != slide.shapes.title:
-                        for paragraph in shape.text_frame.paragraphs:
+            for slide_idx, slide in enumerate(presentation.slides):
+                try:
+                    # Set background color (skip title slide to keep it clean)
+                    if slide_idx > 0:  # Skip first slide (title slide)
+                        background = slide.background
+                        fill = background.fill
+                        fill.solid()
+                        fill.fore_color.rgb = PptxRGBColor(*colors["background"])
+                    
+                    # Style title shapes
+                    if slide.shapes.title and slide.shapes.title.has_text_frame:
+                        title_frame = slide.shapes.title.text_frame
+                        for paragraph in title_frame.paragraphs:
                             for run in paragraph.runs:
-                                if run.font.color.type is None or run.font.color.rgb is None:
+                                run.font.color.rgb = PptxRGBColor(*colors["primary"])
+                                run.font.bold = True
+                                # Ensure font name is set
+                                run.font.name = 'Calibri'
+                    
+                    # Style other text shapes
+                    for shape in slide.shapes:
+                        if hasattr(shape, "text_frame") and shape.has_text_frame and shape != slide.shapes.title:
+                            for paragraph in shape.text_frame.paragraphs:
+                                for run in paragraph.runs:
                                     run.font.color.rgb = PptxRGBColor(*colors["text"])
+                                    # Ensure font name is set
+                                    run.font.name = 'Calibri'
+                except Exception as slide_error:
+                    logger.warning(f"Failed to apply theme to slide {slide_idx}: {slide_error}")
+                    continue
             
             logger.info(f"Applied PowerPoint theme: {theme_name or StylingService.DEFAULT_THEME}")
             
