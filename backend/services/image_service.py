@@ -38,14 +38,14 @@ class ImageService:
         self.config = scraping_config
         self.session = requests.Session()
     
-    def search_images(self, query: str, source: str = "duckduckgo", 
+    def search_images(self, query: str, source: str = "wikimedia", 
                      max_results: int = 10) -> List[ImageResult]:
         """
-        Search for images using web scraping.
+        Search for images using web scraping or APIs.
         
         Args:
             query: Search query string
-            source: Image source to use (duckduckgo, bing, google)
+            source: Image source to use (wikimedia, duckduckgo, bing, google)
             max_results: Maximum number of results to return
             
         Returns:
@@ -54,15 +54,17 @@ class ImageService:
         source = source.lower()
         
         try:
-            if source == "duckduckgo":
+            if source == "wikimedia":
+                return self._search_wikimedia(query, max_results)
+            elif source == "duckduckgo":
                 return self._scrape_duckduckgo(query, max_results)
             elif source == "bing":
                 return self._scrape_bing(query, max_results)
             elif source == "google":
                 return self._scrape_google(query, max_results)
             else:
-                logger.warning(f"Unknown source '{source}', defaulting to DuckDuckGo")
-                return self._scrape_duckduckgo(query, max_results)
+                logger.warning(f"Unknown source '{source}', defaulting to Wikimedia")
+                return self._search_wikimedia(query, max_results)
         except Exception as e:
             logger.error(f"Error searching images from {source}: {e}")
             return []
@@ -77,17 +79,21 @@ class ImageService:
             max_results: Maximum number of results to return
             
         Returns:
-            List of ImageResult objects
+            List of ImageResult objects, ranked by relevance
         """
         sources = self.config.get_source_priority()
         
         for source in sources:
             logger.info(f"Attempting to search images from {source}")
             try:
-                results = self.search_images(query, source, max_results)
+                # Request more results than needed for filtering
+                results = self.search_images(query, source, max_results * 2)
                 if results:
-                    logger.info(f"Successfully found {len(results)} images from {source}")
-                    return results
+                    # Rank and filter results
+                    ranked_results = self._rank_image_results(results, query)
+                    top_results = ranked_results[:max_results]
+                    logger.info(f"Successfully found {len(top_results)} images from {source}")
+                    return top_results
                 else:
                     logger.warning(f"No results from {source}, trying next source")
             except Exception as e:
@@ -96,6 +102,142 @@ class ImageService:
         
         logger.error(f"All image sources failed for query: {query}")
         return []
+    
+    def _rank_image_results(self, results: List[ImageResult], query: str) -> List[ImageResult]:
+        """
+        Rank image results by relevance and quality indicators.
+        
+        Args:
+            results: List of image results to rank
+            query: Original search query
+            
+        Returns:
+            Ranked list of image results
+        """
+        query_words = set(query.lower().split())
+        
+        def score_result(result: ImageResult) -> float:
+            score = 0.0
+            
+            # Score based on title relevance
+            if result.title:
+                title_lower = result.title.lower()
+                title_words = set(title_lower.split())
+                
+                # Boost for query word matches in title
+                matches = query_words.intersection(title_words)
+                score += len(matches) * 2.0
+                
+                # Penalize generic titles
+                generic_terms = {'image', 'photo', 'picture', 'download', 'free', 'stock'}
+                if any(term in title_lower for term in generic_terms):
+                    score -= 1.0
+            
+            # Score based on URL quality
+            url_lower = result.url.lower()
+            
+            # Boost for reputable image sources
+            quality_domains = ['wikimedia', 'wikipedia', 'flickr', 'unsplash', 'pexels', 'pixabay']
+            if any(domain in url_lower for domain in quality_domains):
+                score += 3.0
+            
+            # Penalize low-quality indicators in URL
+            low_quality_indicators = ['thumbnail', 'thumb', 'small', 'icon', 'logo', 'avatar']
+            if any(indicator in url_lower for indicator in low_quality_indicators):
+                score -= 2.0
+            
+            # Boost for common high-quality image formats
+            if url_lower.endswith('.jpg') or url_lower.endswith('.jpeg'):
+                score += 0.5
+            elif url_lower.endswith('.png'):
+                score += 0.3
+            
+            return score
+        
+        # Score and sort results
+        scored_results = [(result, score_result(result)) for result in results]
+        scored_results.sort(key=lambda x: x[1], reverse=True)
+        
+        return [result for result, score in scored_results]
+    
+    def _search_wikimedia(self, query: str, max_results: int) -> List[ImageResult]:
+        """
+        Search for images from Wikimedia Commons using their official API.
+        This is reliable, free, and perfect for educational/historical content.
+        
+        Args:
+            query: Search query
+            max_results: Maximum results to return
+            
+        Returns:
+            List of ImageResult objects
+        """
+        config = self.config.get_source_config("wikimedia")
+        
+        try:
+            # Wikimedia requires a proper User-Agent
+            headers = {
+                "User-Agent": "PDFMaker/1.0 (Educational Document Generator; contact@example.com)"
+            }
+            
+            # Wikimedia Commons API parameters
+            params = {
+                "action": "query",
+                "format": "json",
+                "generator": "search",
+                "gsrsearch": query,
+                "gsrnamespace": "6",  # File namespace
+                "gsrlimit": max_results,
+                "prop": "imageinfo",
+                "iiprop": "url|size|mime",
+                "iiurlwidth": "1024",  # Get reasonable size thumbnails
+            }
+            
+            response = self.session.get(
+                config["url"],
+                params=params,
+                headers=headers,
+                timeout=config["timeout"]
+            )
+            response.raise_for_status()
+            
+            data = response.json()
+            results = []
+            
+            # Extract image information from the response
+            pages = data.get("query", {}).get("pages", {})
+            
+            for page_id, page_data in pages.items():
+                imageinfo = page_data.get("imageinfo", [])
+                if imageinfo:
+                    info = imageinfo[0]
+                    image_url = info.get("url")
+                    thumbnail_url = info.get("thumburl", image_url)
+                    title = page_data.get("title", "").replace("File:", "")
+                    
+                    # Filter by size and mime type
+                    width = info.get("width", 0)
+                    height = info.get("height", 0)
+                    mime = info.get("mime", "")
+                    
+                    # Only include reasonably sized images
+                    if (width >= 400 and height >= 300 and 
+                        mime in ["image/jpeg", "image/png", "image/gif"]):
+                        results.append(ImageResult(
+                            url=image_url,
+                            thumbnail_url=thumbnail_url,
+                            title=title,
+                            source="wikimedia"
+                        ))
+                    
+                    if len(results) >= max_results:
+                        break
+            
+            return results
+            
+        except Exception as e:
+            logger.error(f"Wikimedia search error: {e}")
+            return []
     
     def _scrape_duckduckgo(self, query: str, max_results: int) -> List[ImageResult]:
         """
@@ -209,7 +351,12 @@ class ImageService:
         headers = self.config.get_headers()
         
         url = config["url"]
-        params = {config["search_param"]: query}
+        params = {
+            config["search_param"]: query,
+            "first": "1",
+            "count": str(max_results * 2),  # Request more to filter
+            "qft": "+filterui:photo-photo",  # Filter for photos
+        }
         params.update(config["image_params"])
         
         try:
@@ -229,23 +376,31 @@ class ImageService:
             # Bing stores image data in m attribute of anchor tags
             image_links = soup.find_all('a', class_='iusc')
             
-            for link in image_links[:max_results]:
+            for link in image_links:
+                if len(results) >= max_results:
+                    break
+                    
                 m_attr = link.get('m')
                 if m_attr:
                     try:
                         import json
                         data = json.loads(m_attr)
-                        image_url = data.get('murl') or data.get('turl')
+                        image_url = data.get('murl')  # Use murl (full size) not turl (thumbnail)
                         thumbnail_url = data.get('turl')
                         title = data.get('t', '')
                         
-                        if image_url:
-                            results.append(ImageResult(
-                                url=image_url,
-                                thumbnail_url=thumbnail_url,
-                                title=title,
-                                source="bing"
-                            ))
+                        # Validate and filter images
+                        if image_url and self._is_valid_image_url(image_url):
+                            # Skip very small images (likely icons/logos)
+                            width = data.get('w', 0)
+                            height = data.get('h', 0)
+                            if width >= 400 and height >= 300:  # Minimum size filter
+                                results.append(ImageResult(
+                                    url=image_url,
+                                    thumbnail_url=thumbnail_url,
+                                    title=title,
+                                    source="bing"
+                                ))
                     except Exception as e:
                         logger.debug(f"Error parsing Bing image data: {e}")
                         continue
@@ -271,7 +426,11 @@ class ImageService:
         headers = self.config.get_headers()
         
         url = config["url"]
-        params = {config["search_param"]: query}
+        params = {
+            config["search_param"]: query,
+            "tbm": "isch",
+            "tbs": "isz:l"  # Large images only
+        }
         params.update(config["image_params"])
         
         try:
@@ -288,35 +447,17 @@ class ImageService:
             soup = BeautifulSoup(response.text, 'html.parser')
             results = []
             
-            # Google stores image data in various script tags
-            # Look for image URLs in the page
-            img_tags = soup.find_all('img')
-            
-            for img in img_tags[:max_results]:
-                # Try to get the actual image URL from data attributes or src
-                image_url = (img.get('data-src') or 
-                           img.get('data-iurl') or 
-                           img.get('src'))
-                
-                if image_url and image_url.startswith('http'):
-                    # Filter out Google's own images
-                    if 'google.com' not in image_url or '/images/' in image_url:
-                        title = img.get('alt', '')
-                        results.append(ImageResult(
-                            url=image_url,
-                            thumbnail_url=image_url,
-                            title=title,
-                            source="google"
-                        ))
-            
-            # Also try to extract from script tags containing image data
+            # Try to extract from script tags containing image data
             scripts = soup.find_all('script')
             for script in scripts:
-                if script.string and 'AF_initDataCallback' in script.string:
-                    # Extract URLs using regex
-                    urls = re.findall(r'https?://[^"\']+\.(?:jpg|jpeg|png|gif|webp)', script.string)
-                    for url in urls[:max_results - len(results)]:
-                        if 'google.com' not in url or '/images/' in url:
+                if script.string and ('AF_initDataCallback' in script.string or 'data:' in script.string):
+                    # Extract URLs using regex - look for actual image URLs
+                    urls = re.findall(r'https?://[^"\'\\]+\.(?:jpg|jpeg|png|gif|webp)', script.string)
+                    for url in urls:
+                        if len(results) >= max_results:
+                            break
+                        # Filter out Google's own images and tracking pixels
+                        if self._is_valid_image_url(url) and 'google.com' not in url:
                             results.append(ImageResult(
                                 url=url,
                                 thumbnail_url=url,
@@ -332,6 +473,44 @@ class ImageService:
         except Exception as e:
             logger.error(f"Google scraping error: {e}")
             return []
+    
+    def _is_valid_image_url(self, url: str) -> bool:
+        """
+        Validate if a URL is likely a valid image URL.
+        
+        Args:
+            url: URL to validate
+            
+        Returns:
+            True if URL appears valid, False otherwise
+        """
+        if not url or not url.startswith('http'):
+            return False
+        
+        # Filter out common non-image patterns
+        invalid_patterns = [
+            'data:image',  # Data URLs
+            'base64',
+            'logo',  # Often small logos
+            'icon',
+            'avatar',
+            'thumbnail',
+            'pixel',  # Tracking pixels
+            '1x1',
+            'spacer',
+            'blank',
+        ]
+        
+        url_lower = url.lower()
+        for pattern in invalid_patterns:
+            if pattern in url_lower:
+                return False
+        
+        # Check for valid image extension
+        valid_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp']
+        has_valid_ext = any(ext in url_lower for ext in valid_extensions)
+        
+        return has_valid_ext
     
     def download_image(self, url: str, timeout: Optional[int] = None) -> Optional[bytes]:
         """

@@ -38,6 +38,7 @@ class ScrapingConfig:
     
     # Image source priority chain
     IMAGE_SOURCES: List[str] = [
+        "wikimedia",
         "duckduckgo",
         "bing",
         "google"
@@ -45,6 +46,12 @@ class ScrapingConfig:
     
     # Source-specific configurations
     SOURCE_CONFIGS: Dict[str, Dict] = {
+        "wikimedia": {
+            "url": "https://commons.wikimedia.org/w/api.php",
+            "search_param": "gsrsearch",
+            "timeout": 10,
+            "max_results": 10,
+        },
         "duckduckgo": {
             "url": "https://duckduckgo.com/",
             "search_param": "q",

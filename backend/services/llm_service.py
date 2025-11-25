@@ -339,35 +339,43 @@ Respond with ONLY "YES" or "NO" - nothing else."""
             APIError: If API error occurs
             APIConnectionError: If connection fails
         """
-        prompt = f"""Generate a concise image search query for the following content.
+        prompt = f"""Generate a specific, visual image search query for the following content.
 
 Content:
 {content}
 
 Requirements:
-- MAXIMUM 5 words
-- Focus on the main visual concept
-- Use simple, descriptive keywords
-- Professional and appropriate
+- 3-6 words maximum
+- Focus on SPECIFIC visual elements, people, places, or events
+- Use descriptive keywords that will find real photographs or historical images
+- Avoid generic terms - be specific
+- For historical content, include specific events, people, or locations
 
-Examples:
-- "Eiffel Tower Paris"
-- "business team meeting"
-- "mountain landscape sunset"
+Good examples:
+- "Storming of Bastille painting"
+- "Marie Antoinette portrait"
+- "French Revolution guillotine"
+- "Napoleon Bonaparte coronation"
+- "Versailles palace interior"
 
-Respond with ONLY the search query (2-5 words) - nothing else."""
+Bad examples (too generic):
+- "French Revolution"
+- "history"
+- "France"
+
+Respond with ONLY the search query (3-6 specific words) - nothing else."""
         
-        system_message = "You are a professional image researcher. Create a short search query of 2-5 words maximum. Respond with only the query."
+        system_message = "You are a professional image researcher specializing in finding specific, relevant historical and documentary photographs. Create a specific search query of 3-6 words. Respond with only the query."
         
-        response = self._call_openai(prompt, system_message, max_tokens=20)
+        response = self._call_openai(prompt, system_message, max_tokens=30)
         
         # Clean up the response and ensure it's concise
-        query = response.strip()
+        query = response.strip().strip('"').strip("'")
         words = query.split()
         
-        # If response is too long, take first 5 words
-        if len(words) > 5:
-            query = ' '.join(words[:5])
+        # If response is too long, take first 6 words
+        if len(words) > 6:
+            query = ' '.join(words[:6])
         
         return query
     
