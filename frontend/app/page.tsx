@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import Link from 'next/link';
 import { Sparkles, FileText, RefreshCw, Download } from 'lucide-react';
-import LiquidEther from '@/components/background/background';
 
 export default function Home() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -21,7 +20,7 @@ export default function Home() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="relative">
           <div className="w-12 h-12 rounded-full border-4 border-transparent border-t-red-500 border-r-yellow-500 animate-spin"></div>
         </div>
@@ -30,27 +29,7 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-black relative overflow-hidden flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8">
-      {/* Animated LiquidEther background */}
-      <div className="absolute inset-0 overflow-hidden">
-        <LiquidEther
-          colors={['#5227FF', '#FF9FFC', '#B19EEF']}
-          mouseForce={20}
-          cursorSize={100}
-          isViscous={false}
-          viscous={30}
-          iterationsViscous={32}
-          iterationsPoisson={32}
-          resolution={0.5}
-          isBounce={false}
-          autoDemo={true}
-          autoSpeed={0.5}
-          autoIntensity={2.2}
-          takeoverDuration={0.25}
-          autoResumeDelay={3000}
-          autoRampDuration={0.6}
-        />
-      </div>
+    <div className="min-h-screen flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8">
 
       {/* Hero section with glassmorphic container */}
       <div className="relative z-10 sm:mx-auto sm:w-full sm:max-w-2xl">

@@ -1,12 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { LoginForm } from '@/components/auth/LoginForm';
 import { RegisterForm } from '@/components/auth/RegisterForm';
 import { useAuth } from '@/contexts/AuthContext';
-import { useEffect } from 'react';
-import LiquidEther from '@/components/background/background';
 
 export default function LoginPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -28,27 +26,7 @@ export default function LoginPage() {
   const switchToLogin = () => setIsLogin(true);
 
   return (
-    <div className="min-h-screen bg-black relative overflow-hidden flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8">
-      {/* Animated LiquidEther background */}
-      <div className="absolute inset-0 overflow-hidden">
-        <LiquidEther
-          colors={['#5227FF', '#FF9FFC', '#B19EEF']}
-          mouseForce={20}
-          cursorSize={100}
-          isViscous={false}
-          viscous={30}
-          iterationsViscous={32}
-          iterationsPoisson={32}
-          resolution={0.5}
-          isBounce={false}
-          autoDemo={true}
-          autoSpeed={0.5}
-          autoIntensity={2.2}
-          takeoverDuration={0.25}
-          autoResumeDelay={3000}
-          autoRampDuration={0.6}
-        />
-      </div>
+    <div className="min-h-screen flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8">
 
       {/* Header with gradient accents */}
       <div className="relative z-10 sm:mx-auto sm:w-full sm:max-w-md">
