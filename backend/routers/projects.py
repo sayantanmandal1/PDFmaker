@@ -282,7 +282,12 @@ async def generate_content(
         )
     
     # Initialize Image service
-    image_service = ImageService()
+    try:
+        image_service = ImageService()
+    except Exception as e:
+        logger.warning(f"Failed to initialize image service: {e}")
+        logger.warning("Content generation will continue without images")
+        image_service = None
     
     # Handle Word document generation
     if project.document_type == "word":
@@ -313,23 +318,28 @@ async def generate_content(
                 image_placement = None
                 
                 try:
-                    needs_image = llm_service.determine_image_need(content)
-                    logger.info(f"Section '{section.header}' needs image: {needs_image}")
+                    # Skip image processing if image service is not available
+                    if image_service is None:
+                        logger.info(f"Skipping image processing for section '{section.header}' - image service unavailable")
+                        needs_image = False
+                    else:
+                        needs_image = llm_service.determine_image_need(content)
+                        logger.info(f"Section '{section.header}' needs image: {needs_image}")
                     
-                    if needs_image:
+                    if needs_image and image_service:
                         # Generate image search query using both header and content for better variety
                         search_query = llm_service.generate_image_search_query(
                             f"Section: {section.header}\n\n{content}"
                         )
                         logger.info(f"Image search query for section '{section.header}': {search_query}")
                         
-                        # Search for images with fallback chain (reduced to 2 to avoid rate limits)
-                        image_results = image_service.search_images_with_fallback(search_query, max_results=2)
+                        # Search for images using Chrome browser
+                        image_results = image_service.search_images_with_fallback(search_query, max_results=3)
                         
                         if image_results:
                             # Try to download the first available image that hasn't been used
                             download_attempts = 0
-                            max_download_attempts = 2  # Limit download attempts to avoid rate limiting
+                            max_download_attempts = 3  # Try more images with better success rate
                             
                             for image_result in image_results:
                                 if download_attempts >= max_download_attempts:
@@ -372,9 +382,9 @@ async def generate_content(
                     # Log image integration error but don't fail content generation
                     logger.error(f"Image integration failed for section '{section.header}': {img_error}")
                 
-                # Add delay after processing images to avoid rate limiting
+                # Add delay after processing images (reduced since Chrome is more reliable)
                 if needs_image:
-                    time.sleep(2.0)  # 2 second delay between sections with images
+                    time.sleep(1.0)  # 1 second delay between sections with images
                 
                 # Update section with generated content and image metadata
                 ContentService.update_section(
@@ -409,6 +419,13 @@ async def generate_content(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="Content generation service temporarily unavailable. Please try again later."
             )
+        
+        # Cleanup image service
+        if image_service:
+            try:
+                image_service.close()
+            except Exception as e:
+                logger.warning(f"Error closing image service: {e}")
         
         return GenerationResponse(
             status="success" if generated_count == len(sections) else "partial",
@@ -446,23 +463,28 @@ async def generate_content(
                 image_position = None
                 
                 try:
-                    needs_image = llm_service.determine_image_need(content)
-                    logger.info(f"Slide '{slide.title}' needs image: {needs_image}")
+                    # Skip image processing if image service is not available
+                    if image_service is None:
+                        logger.info(f"Skipping image processing for slide '{slide.title}' - image service unavailable")
+                        needs_image = False
+                    else:
+                        needs_image = llm_service.determine_image_need(content)
+                        logger.info(f"Slide '{slide.title}' needs image: {needs_image}")
                     
-                    if needs_image:
+                    if needs_image and image_service:
                         # Generate image search query using both title and content for better variety
                         search_query = llm_service.generate_image_search_query(
                             f"Slide: {slide.title}\n\n{content}"
                         )
                         logger.info(f"Image search query for slide '{slide.title}': {search_query}")
                         
-                        # Search for images with fallback chain (reduced to 2 to avoid rate limits)
-                        image_results = image_service.search_images_with_fallback(search_query, max_results=2)
+                        # Search for images using Chrome browser
+                        image_results = image_service.search_images_with_fallback(search_query, max_results=3)
                         
                         if image_results:
                             # Try to download the first available image that hasn't been used
                             download_attempts = 0
-                            max_download_attempts = 2  # Limit download attempts to avoid rate limiting
+                            max_download_attempts = 3  # Try more images with better success rate
                             
                             for image_result in image_results:
                                 if download_attempts >= max_download_attempts:
@@ -508,9 +530,9 @@ async def generate_content(
                     # Log image integration error but don't fail content generation
                     logger.error(f"Image integration failed for slide '{slide.title}': {img_error}")
                 
-                # Add delay after processing images to avoid rate limiting
+                # Add delay after processing images (reduced since Chrome is more reliable)
                 if needs_image:
-                    time.sleep(2.0)  # 2 second delay between slides with images
+                    time.sleep(1.0)  # 1 second delay between slides with images
                 
                 # Update slide with generated content
                 ContentService.update_slide(
@@ -546,6 +568,13 @@ async def generate_content(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="Content generation service temporarily unavailable. Please try again later."
             )
+        
+        # Cleanup image service
+        if image_service:
+            try:
+                image_service.close()
+            except Exception as e:
+                logger.warning(f"Error closing image service: {e}")
         
         return GenerationResponse(
             status="success" if generated_count == len(slides) else "partial",

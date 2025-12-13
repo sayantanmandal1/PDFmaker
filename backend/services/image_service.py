@@ -1,18 +1,26 @@
 """
-Image service for searching, downloading, and processing images.
-Implements web scraping with fallback chain: DuckDuckGo -> Bing -> Google.
+Image service for searching and downloading images using headless Chrome browser.
 """
-from typing import List, Optional, Dict, Tuple
 import logging
 import time
-import re
+import os
+import tempfile
 from io import BytesIO
-
-import requests
-from bs4 import BeautifulSoup
+from typing import List, Optional, Dict, Any
+from urllib.parse import urlparse
 from PIL import Image
+import base64
 
-from scraping_config import scraping_config
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException, WebDriverException
+from webdriver_manager.chrome import ChromeDriverManager
+
+from config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -20,765 +28,353 @@ logger = logging.getLogger(__name__)
 class ImageResult:
     """Represents an image search result."""
     
-    def __init__(self, url: str, thumbnail_url: Optional[str] = None, 
-                 title: Optional[str] = None, source: str = "unknown"):
+    def __init__(self, url: str, title: str = "", width: int = 0, height: int = 0, source: str = ""):
         self.url = url
-        self.thumbnail_url = thumbnail_url
         self.title = title
+        self.width = width
+        self.height = height
         self.source = source
     
     def __repr__(self):
-        return f"ImageResult(url={self.url}, source={self.source})"
+        return f"ImageResult(url='{self.url}', title='{self.title}', size={self.width}x{self.height})"
 
 
 class ImageService:
-    """Service for image search, download, and processing operations."""
+    """Service for searching and downloading images using headless Chrome."""
     
     def __init__(self):
-        self.config = scraping_config
-        self.session = requests.Session()
+        self.driver = None
+        self.last_request_time = 0
+        self.min_request_interval = 2.0  # 2 seconds between requests to avoid rate limiting
     
-    def search_images(self, query: str, source: str = "wikimedia", 
-                     max_results: int = 10) -> List[ImageResult]:
-        """
-        Search for images using web scraping or APIs.
-        
-        Args:
-            query: Search query string
-            source: Image source to use (wikimedia, duckduckgo, bing, google)
-            max_results: Maximum number of results to return
-            
-        Returns:
-            List of ImageResult objects
-        """
-        source = source.lower()
-        
-        try:
-            if source == "wikimedia":
-                return self._search_wikimedia(query, max_results)
-            elif source == "duckduckgo":
-                return self._scrape_duckduckgo(query, max_results)
-            elif source == "bing":
-                return self._scrape_bing(query, max_results)
-            elif source == "google":
-                return self._scrape_google(query, max_results)
-            else:
-                logger.warning(f"Unknown source '{source}', defaulting to Wikimedia")
-                return self._search_wikimedia(query, max_results)
-        except Exception as e:
-            logger.error(f"Error searching images from {source}: {e}")
-            return []
-    
-    def search_images_with_fallback(self, query: str, max_results: int = 3) -> List[ImageResult]:
-        """
-        Search for images with automatic fallback chain.
-        Tries Wikimedia -> DuckDuckGo -> Bing -> Google until results are found.
-        
-        Args:
-            query: Search query string
-            max_results: Maximum number of results to return (default: 3 to avoid rate limits)
-            
-        Returns:
-            List of ImageResult objects, ranked by relevance
-        """
-        sources = self.config.get_source_priority()
-        
-        for source in sources:
-            logger.info(f"Attempting to search images from {source}")
+    def _get_driver(self):
+        """Get or create a Chrome WebDriver instance."""
+        if self.driver is None:
             try:
-                # Request slightly more results than needed for filtering
-                search_count = min(max_results + 2, 10)  # Cap at 10 to avoid rate limits
-                results = self.search_images(query, source, search_count)
-                if results:
-                    # Rank and filter results
-                    ranked_results = self._rank_image_results(results, query)
-                    top_results = ranked_results[:max_results]
-                    logger.info(f"Successfully found {len(top_results)} images from {source}")
-                    return top_results
-                else:
-                    logger.warning(f"No results from {source}, trying next source")
+                # Setup Chrome options
+                chrome_options = Options()
+                chrome_options.add_argument("--headless")
+                chrome_options.add_argument("--no-sandbox")
+                chrome_options.add_argument("--disable-dev-shm-usage")
+                chrome_options.add_argument("--disable-gpu")
+                chrome_options.add_argument("--window-size=1920,1080")
+                chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+                chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+                chrome_options.add_argument("--disable-extensions")
+                chrome_options.add_argument("--disable-plugins")
+                chrome_options.add_argument("--disable-images")  # Don't load images automatically for faster page loads
+                chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
+                chrome_options.add_experimental_option('useAutomationExtension', False)
+                
+                # Install and setup ChromeDriver
+                try:
+                    service = Service(ChromeDriverManager().install())
+                except Exception as driver_error:
+                    logger.error(f"Failed to install ChromeDriver: {driver_error}")
+                    raise Exception(f"ChromeDriver installation failed. Please ensure Chrome browser is installed. Error: {driver_error}")
+                
+                self.driver = webdriver.Chrome(service=service, options=chrome_options)
+                self.driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+                
+                logger.info("Chrome WebDriver initialized successfully")
+                
             except Exception as e:
-                logger.error(f"Failed to search {source}: {e}, trying next source")
-                continue
+                logger.error(f"Failed to initialize Chrome WebDriver: {e}")
+                logger.error("Please ensure Google Chrome browser is installed on your system")
+                raise Exception(f"Chrome WebDriver initialization failed: {e}")
         
-        logger.error(f"All image sources failed for query: {query}")
-        return []
+        return self.driver
     
-    def _rank_image_results(self, results: List[ImageResult], query: str) -> List[ImageResult]:
-        """
-        Rank image results by relevance and quality indicators.
+    def _rate_limit(self):
+        """Implement rate limiting between requests."""
+        current_time = time.time()
+        time_since_last = current_time - self.last_request_time
         
-        Args:
-            results: List of image results to rank
-            query: Original search query
-            
-        Returns:
-            Ranked list of image results
-        """
-        query_words = set(query.lower().split())
+        if time_since_last < self.min_request_interval:
+            sleep_time = self.min_request_interval - time_since_last
+            time.sleep(sleep_time)
         
-        def score_result(result: ImageResult) -> float:
-            score = 0.0
-            
-            # Score based on title relevance
-            if result.title:
-                title_lower = result.title.lower()
-                title_words = set(title_lower.split())
-                
-                # Boost for query word matches in title
-                matches = query_words.intersection(title_words)
-                score += len(matches) * 2.0
-                
-                # Penalize generic titles
-                generic_terms = {'image', 'photo', 'picture', 'download', 'free', 'stock'}
-                if any(term in title_lower for term in generic_terms):
-                    score -= 1.0
-            
-            # Score based on URL quality
-            url_lower = result.url.lower()
-            
-            # Boost for reputable image sources
-            quality_domains = ['wikimedia', 'wikipedia', 'flickr', 'unsplash', 'pexels', 'pixabay']
-            if any(domain in url_lower for domain in quality_domains):
-                score += 3.0
-            
-            # Penalize low-quality indicators in URL
-            low_quality_indicators = ['thumbnail', 'thumb', 'small', 'icon', 'logo', 'avatar']
-            if any(indicator in url_lower for indicator in low_quality_indicators):
-                score -= 2.0
-            
-            # Boost for common high-quality image formats
-            if url_lower.endswith('.jpg') or url_lower.endswith('.jpeg'):
-                score += 0.5
-            elif url_lower.endswith('.png'):
-                score += 0.3
-            
-            return score
-        
-        # Score and sort results
-        scored_results = [(result, score_result(result)) for result in results]
-        scored_results.sort(key=lambda x: x[1], reverse=True)
-        
-        return [result for result, score in scored_results]
+        self.last_request_time = time.time()
     
-    def _search_wikimedia(self, query: str, max_results: int) -> List[ImageResult]:
-        """
-        Search for images from Wikimedia Commons using their official API.
-        This is reliable, free, and perfect for educational/historical content.
-        
-        Args:
-            query: Search query
-            max_results: Maximum results to return
-            
-        Returns:
-            List of ImageResult objects
-        """
-        config = self.config.get_source_config("wikimedia")
-        
+    def search_images_google(self, query: str, max_results: int = 5, size_filter: str = "large") -> List[ImageResult]:
+        """Search for images using Google Images with headless Chrome."""
         try:
-            # Add longer delay to respect rate limits (Wikimedia is strict)
-            time.sleep(1.0)  # 1 second delay between requests
+            self._rate_limit()
+            driver = self._get_driver()
             
-            # Wikimedia requires a proper User-Agent
-            headers = {
-                "User-Agent": "PDFMaker/1.0 (Educational Document Generator; contact@example.com)"
-            }
+            # Navigate to Google Images
+            search_url = f"https://www.google.com/search?q={query}&tbm=isch&hl=en"
             
-            # Wikimedia Commons API parameters
-            params = {
-                "action": "query",
-                "format": "json",
-                "generator": "search",
-                "gsrsearch": query,
-                "gsrnamespace": "6",  # File namespace
-                "gsrlimit": max_results,
-                "prop": "imageinfo",
-                "iiprop": "url|size|mime",
-                "iiurlwidth": "1024",  # Get reasonable size thumbnails
-            }
+            # Add size filter for high quality images
+            if size_filter == "large":
+                search_url += "&tbs=isz:l"  # Large images
+            elif size_filter == "medium":
+                search_url += "&tbs=isz:m"  # Medium images
+            elif size_filter == "icon":
+                search_url += "&tbs=isz:i"  # Icon size
             
-            response = self.session.get(
-                config["url"],
-                params=params,
-                headers=headers,
-                timeout=config["timeout"]
-            )
+            logger.info(f"Searching Google Images: {search_url}")
+            driver.get(search_url)
             
-            # Check for rate limiting
-            if response.status_code == 429:
-                logger.warning("Wikimedia rate limit exceeded, skipping this source")
-                return []
+            # Wait for images to load
+            wait = WebDriverWait(driver, 10)
+            wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "img[data-src], img[src]")))
             
-            response.raise_for_status()
+            # Scroll down to load more images
+            driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+            time.sleep(2)
             
-            data = response.json()
+            # Find image elements
+            img_elements = driver.find_elements(By.CSS_SELECTOR, "img[data-src], img[src]")
+            
             results = []
+            processed_urls = set()
             
-            # Extract image information from the response
-            pages = data.get("query", {}).get("pages", {})
-            
-            for page_id, page_data in pages.items():
-                imageinfo = page_data.get("imageinfo", [])
-                if imageinfo:
-                    info = imageinfo[0]
-                    image_url = info.get("url")
-                    thumbnail_url = info.get("thumburl", image_url)
-                    title = page_data.get("title", "").replace("File:", "")
-                    
-                    # Filter by size and mime type
-                    width = info.get("width", 0)
-                    height = info.get("height", 0)
-                    mime = info.get("mime", "")
-                    
-                    # Only include reasonably sized images
-                    if (width >= 400 and height >= 300 and 
-                        mime in ["image/jpeg", "image/png", "image/gif"]):
-                        results.append(ImageResult(
-                            url=image_url,
-                            thumbnail_url=thumbnail_url,
-                            title=title,
-                            source="wikimedia"
-                        ))
-                    
-                    if len(results) >= max_results:
-                        break
-            
-            return results
-            
-        except Exception as e:
-            logger.error(f"Wikimedia search error: {e}")
-            return []
-    
-    def _scrape_duckduckgo(self, query: str, max_results: int) -> List[ImageResult]:
-        """
-        Scrape image results from DuckDuckGo.
-        
-        Args:
-            query: Search query
-            max_results: Maximum results to return
-            
-        Returns:
-            List of ImageResult objects
-        """
-        config = self.config.get_source_config("duckduckgo")
-        headers = self.config.get_headers()
-        
-        try:
-            # DuckDuckGo uses a token-based API for images
-            # First, get the search page to extract the vqd token
-            search_url = "https://duckduckgo.com/"
-            params = {"q": query, "iax": "images", "ia": "images"}
-            
-            response = self.session.get(
-                search_url,
-                params=params,
-                headers=headers,
-                timeout=config["timeout"]
-            )
-            response.raise_for_status()
-            
-            # Try multiple patterns to extract vqd token
-            vqd = None
-            
-            # Pattern 1: vqd=[\d-]+
-            vqd_match = re.search(r'vqd=([\d-]+)', response.text)
-            if vqd_match:
-                vqd = vqd_match.group(1)
-            
-            # Pattern 2: "vqd":"value"
-            if not vqd:
-                vqd_match = re.search(r'"vqd":"([^"]+)"', response.text)
-                if vqd_match:
-                    vqd = vqd_match.group(1)
-            
-            # Pattern 3: vqd: "value"
-            if not vqd:
-                vqd_match = re.search(r'vqd:\s*"([^"]+)"', response.text)
-                if vqd_match:
-                    vqd = vqd_match.group(1)
-            
-            if not vqd:
-                logger.warning("Could not extract vqd token from DuckDuckGo")
-                return []
-            
-            logger.debug(f"Extracted vqd token: {vqd}")
-            
-            # Now query the image API
-            api_url = "https://duckduckgo.com/i.js"
-            api_params = {
-                "l": "us-en",
-                "o": "json",
-                "q": query,
-                "vqd": vqd,
-                "f": ",,,",
-                "p": "1"
-            }
-            
-            time.sleep(self.config.SCRAPING_DELAY)
-            
-            api_response = self.session.get(
-                api_url,
-                params=api_params,
-                headers=headers,
-                timeout=config["timeout"]
-            )
-            api_response.raise_for_status()
-            
-            data = api_response.json()
-            results = []
-            
-            for item in data.get("results", [])[:max_results]:
-                image_url = item.get("image")
-                thumbnail_url = item.get("thumbnail")
-                title = item.get("title", "")
-                
-                if image_url and self._is_valid_image_url(image_url):
-                    results.append(ImageResult(
-                        url=image_url,
-                        thumbnail_url=thumbnail_url,
-                        title=title,
-                        source="duckduckgo"
-                    ))
-            
-            return results
-            
-        except Exception as e:
-            logger.error(f"DuckDuckGo scraping error: {e}")
-            return []
-    
-    def _scrape_bing(self, query: str, max_results: int) -> List[ImageResult]:
-        """
-        Scrape image results from Bing Images.
-        
-        Args:
-            query: Search query
-            max_results: Maximum results to return
-            
-        Returns:
-            List of ImageResult objects
-        """
-        config = self.config.get_source_config("bing")
-        headers = self.config.get_headers()
-        
-        url = config["url"]
-        params = {
-            config["search_param"]: query,
-            "first": "1",
-            "count": str(max_results * 2),  # Request more to filter
-            "qft": "+filterui:photo-photo",  # Filter for photos
-        }
-        params.update(config["image_params"])
-        
-        try:
-            time.sleep(self.config.SCRAPING_DELAY)
-            
-            response = self.session.get(
-                url,
-                params=params,
-                headers=headers,
-                timeout=config["timeout"]
-            )
-            response.raise_for_status()
-            
-            soup = BeautifulSoup(response.text, 'html.parser')
-            results = []
-            
-            # Bing stores image data in m attribute of anchor tags
-            image_links = soup.find_all('a', class_='iusc')
-            
-            for link in image_links:
+            for img_element in img_elements:
                 if len(results) >= max_results:
                     break
+                
+                try:
+                    # Get image URL (prefer data-src over src)
+                    img_url = img_element.get_attribute("data-src") or img_element.get_attribute("src")
                     
-                m_attr = link.get('m')
-                if m_attr:
-                    try:
-                        import json
-                        data = json.loads(m_attr)
-                        image_url = data.get('murl')  # Use murl (full size) not turl (thumbnail)
-                        thumbnail_url = data.get('turl')
-                        title = data.get('t', '')
-                        
-                        # Validate and filter images
-                        if image_url and self._is_valid_image_url(image_url):
-                            # Skip very small images (likely icons/logos)
-                            width = data.get('w', 0)
-                            height = data.get('h', 0)
-                            if width >= 400 and height >= 300:  # Minimum size filter
-                                results.append(ImageResult(
-                                    url=image_url,
-                                    thumbnail_url=thumbnail_url,
-                                    title=title,
-                                    source="bing"
-                                ))
-                    except Exception as e:
-                        logger.debug(f"Error parsing Bing image data: {e}")
+                    if not img_url or img_url in processed_urls:
                         continue
+                    
+                    # Skip data URLs, SVGs, and very small images
+                    if (img_url.startswith("data:") or 
+                        img_url.endswith(".svg") or 
+                        "1x1" in img_url or
+                        "logo" in img_url.lower()):
+                        continue
+                    
+                    # Get image dimensions if available
+                    width = 0
+                    height = 0
+                    try:
+                        width = int(img_element.get_attribute("width") or 0)
+                        height = int(img_element.get_attribute("height") or 0)
+                    except (ValueError, TypeError):
+                        pass
+                    
+                    # Skip very small images
+                    if width > 0 and height > 0 and (width < 200 or height < 200):
+                        continue
+                    
+                    # Get alt text as title
+                    title = img_element.get_attribute("alt") or ""
+                    
+                    result = ImageResult(
+                        url=img_url,
+                        title=title,
+                        width=width,
+                        height=height,
+                        source="google"
+                    )
+                    
+                    results.append(result)
+                    processed_urls.add(img_url)
+                    
+                except Exception as e:
+                    logger.debug(f"Error processing image element: {e}")
+                    continue
             
+            logger.info(f"Successfully found {len(results)} images from Google")
             return results
             
         except Exception as e:
-            logger.error(f"Bing scraping error: {e}")
+            logger.error(f"Google Images search error: {e}")
             return []
     
-    def _scrape_google(self, query: str, max_results: int) -> List[ImageResult]:
-        """
-        Scrape image results from Google Images.
+    def search_images_with_fallback(self, query: str, max_results: int = 5) -> List[ImageResult]:
+        """Search for images with different size filters as fallback."""
+        all_results = []
         
-        Args:
-            query: Search query
-            max_results: Maximum results to return
-            
-        Returns:
-            List of ImageResult objects
-        """
-        config = self.config.get_source_config("google")
-        headers = self.config.get_headers()
+        # Try different size filters
+        size_filters = ["large", "medium"]
         
-        url = config["url"]
-        params = {
-            config["search_param"]: query,
-            "tbm": "isch",
-            "tbs": "isz:l"  # Large images only
-        }
-        params.update(config["image_params"])
-        
-        try:
-            time.sleep(self.config.SCRAPING_DELAY)
-            
-            response = self.session.get(
-                url,
-                params=params,
-                headers=headers,
-                timeout=config["timeout"]
-            )
-            response.raise_for_status()
-            
-            soup = BeautifulSoup(response.text, 'html.parser')
-            results = []
-            
-            # Try to extract from script tags containing image data
-            scripts = soup.find_all('script')
-            for script in scripts:
-                if script.string and ('AF_initDataCallback' in script.string or 'data:' in script.string):
-                    # Extract URLs using regex - look for actual image URLs
-                    urls = re.findall(r'https?://[^"\'\\]+\.(?:jpg|jpeg|png|gif|webp)', script.string)
-                    for url in urls:
-                        if len(results) >= max_results:
-                            break
-                        # Filter out Google's own images and tracking pixels
-                        if self._is_valid_image_url(url) and 'google.com' not in url:
-                            results.append(ImageResult(
-                                url=url,
-                                thumbnail_url=url,
-                                title="",
-                                source="google"
-                            ))
-                    
-                    if len(results) >= max_results:
-                        break
-            
-            return results[:max_results]
-            
-        except Exception as e:
-            logger.error(f"Google scraping error: {e}")
-            return []
-    
-    def _is_valid_image_url(self, url: str) -> bool:
-        """
-        Validate if a URL is likely a valid image URL.
-        
-        Args:
-            url: URL to validate
-            
-        Returns:
-            True if URL appears valid, False otherwise
-        """
-        if not url or not url.startswith('http'):
-            return False
-        
-        # Filter out common non-image patterns
-        invalid_patterns = [
-            'data:image',  # Data URLs
-            'base64',
-            'logo',  # Often small logos
-            'icon',
-            'avatar',
-            'thumbnail',
-            'pixel',  # Tracking pixels
-            '1x1',
-            'spacer',
-            'blank',
-        ]
-        
-        url_lower = url.lower()
-        for pattern in invalid_patterns:
-            if pattern in url_lower:
-                return False
-        
-        # Check for valid image extension
-        valid_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp']
-        has_valid_ext = any(ext in url_lower for ext in valid_extensions)
-        
-        return has_valid_ext
-    
-    def download_image(self, url: str, timeout: Optional[int] = None) -> Optional[bytes]:
-        """
-        Download image from URL.
-        
-        Args:
-            url: Image URL
-            timeout: Optional timeout in seconds
-            
-        Returns:
-            Image data as bytes, or None if download fails
-        """
-        if timeout is None:
-            timeout = self.config.DOWNLOAD_TIMEOUT
-        
-        headers = self.config.get_headers()
-        
-        # Use more specific User-Agent for Wikimedia
-        if 'wikimedia.org' in url or 'wikipedia.org' in url:
-            headers = {
-                "User-Agent": "DocumentGenerator/1.0 (Educational tool; https://github.com/yourproject; contact@example.com)"
-            }
-        
-        try:
-            # Add longer delay for Wikimedia URLs to avoid rate limiting
-            if 'wikimedia.org' in url or 'wikipedia.org' in url:
-                time.sleep(3.0)  # 3 second delay for Wikimedia downloads
-            
-            response = self.session.get(
-                url,
-                headers=headers,
-                timeout=timeout,
-                stream=True
-            )
-            
-            # Handle rate limiting gracefully
-            if response.status_code == 429:
-                logger.warning(f"Rate limited when downloading from {url}")
-                # Wait longer and try once more
-                time.sleep(5.0)
-                response = self.session.get(url, headers=headers, timeout=timeout, stream=True)
-                if response.status_code == 429:
-                    logger.error(f"Still rate limited after retry from {url}")
-                    return None
-            
-            response.raise_for_status()
-            
-            # Check file size
-            content_length = response.headers.get('content-length')
-            if content_length:
-                size_mb = int(content_length) / (1024 * 1024)
-                if size_mb > self.config.MAX_FILE_SIZE_MB:
-                    logger.warning(f"Image too large: {size_mb:.2f}MB (max: {self.config.MAX_FILE_SIZE_MB}MB)")
-                    return None
-            
-            # Download the image
-            image_data = response.content
-            
-            # Validate it's actually an image
+        for size_filter in size_filters:
             try:
-                Image.open(BytesIO(image_data))
+                logger.info(f"Searching Google Images with {size_filter} size filter")
+                results = self.search_images_google(query, max_results, size_filter)
+                
+                if results:
+                    all_results.extend(results)
+                    logger.info(f"Found {len(results)} images with {size_filter} filter")
+                    
+                    # If we have enough results, stop searching
+                    if len(all_results) >= max_results:
+                        break
+                else:
+                    logger.warning(f"No results with {size_filter} filter, trying next")
+                    
             except Exception as e:
-                logger.warning(f"Downloaded data is not a valid image: {e}")
+                logger.error(f"Error with {size_filter} filter: {e}")
+                continue
+        
+        if not all_results:
+            logger.error(f"All image searches failed for query: {query}")
+        
+        return all_results[:max_results]
+    
+    def download_image(self, url: str) -> Optional[bytes]:
+        """Download an image using the browser."""
+        try:
+            self._rate_limit()
+            driver = self._get_driver()
+            
+            # Navigate to the image URL
+            driver.get(url)
+            
+            # Wait for the image to load
+            wait = WebDriverWait(driver, 10)
+            img_element = wait.until(EC.presence_of_element_located((By.TAG_NAME, "img")))
+            
+            # Get the image as base64
+            canvas_script = """
+            var img = arguments[0];
+            var canvas = document.createElement('canvas');
+            var ctx = canvas.getContext('2d');
+            canvas.width = img.naturalWidth || img.width;
+            canvas.height = img.naturalHeight || img.height;
+            ctx.drawImage(img, 0, 0);
+            return canvas.toDataURL('image/jpeg', 0.8);
+            """
+            
+            base64_data = driver.execute_script(canvas_script, img_element)
+            
+            if base64_data and base64_data.startswith('data:image'):
+                # Extract base64 data
+                base64_str = base64_data.split(',')[1]
+                image_data = base64.b64decode(base64_str)
+                
+                # Validate the image
+                try:
+                    with Image.open(BytesIO(image_data)) as img:
+                        img.verify()
+                    
+                    logger.info(f"Successfully downloaded image from {url} ({len(image_data)} bytes)")
+                    return image_data
+                    
+                except Exception as e:
+                    logger.warning(f"Downloaded data is not a valid image: {e}")
+                    return None
+            else:
+                logger.warning(f"Failed to get image data from {url}")
                 return None
-            
-            return image_data
-            
-        except requests.Timeout:
+                
+        except TimeoutException:
             logger.error(f"Timeout downloading image from {url}")
             return None
-        except requests.HTTPError as e:
-            # Handle rate limiting with retry
-            if e.response.status_code == 429:
-                logger.warning(f"Rate limited downloading from {url}, waiting before retry...")
-                time.sleep(2.0)  # Wait 2 seconds
-                try:
-                    # Retry once
-                    response = self.session.get(url, headers=headers, timeout=timeout, stream=True)
-                    response.raise_for_status()
-                    image_data = response.content
-                    try:
-                        Image.open(BytesIO(image_data))
-                        return image_data
-                    except:
-                        return None
-                except:
-                    logger.error(f"Retry failed for {url}")
-                    return None
-            else:
-                logger.error(f"HTTP error downloading image from {url}: {e}")
-                return None
-        except requests.RequestException as e:
-            logger.error(f"Error downloading image from {url}: {e}")
+        except WebDriverException as e:
+            logger.error(f"WebDriver error downloading image from {url}: {e}")
             return None
         except Exception as e:
-            logger.error(f"Unexpected error downloading image: {e}")
+            logger.error(f"Unexpected error downloading image from {url}: {e}")
             return None
     
-    def resize_image(self, image_bytes: bytes, max_width: int, max_height: int) -> Optional[bytes]:
-        """
-        Resize image to fit within specified dimensions while maintaining aspect ratio.
-        
-        Args:
-            image_bytes: Image data as bytes
-            max_width: Maximum width in pixels
-            max_height: Maximum height in pixels
-            
-        Returns:
-            Resized image data as bytes, or None if resize fails
-        """
+    def optimize_for_document(self, image_data: bytes, doc_type: str) -> Optional[bytes]:
+        """Optimize image for document embedding."""
         try:
-            # Open the image
-            image = Image.open(BytesIO(image_bytes))
-            
-            # Get original dimensions
-            original_width, original_height = image.size
-            
-            # Check if resize is needed
-            if original_width <= max_width and original_height <= max_height:
-                logger.debug(f"Image already within bounds ({original_width}x{original_height})")
-                return image_bytes
-            
-            # Calculate new dimensions maintaining aspect ratio
-            width_ratio = max_width / original_width
-            height_ratio = max_height / original_height
-            resize_ratio = min(width_ratio, height_ratio)
-            
-            new_width = int(original_width * resize_ratio)
-            new_height = int(original_height * resize_ratio)
-            
-            logger.info(f"Resizing image from {original_width}x{original_height} to {new_width}x{new_height}")
-            
-            # Resize the image using high-quality resampling
-            resized_image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
-            
-            # Save to bytes
-            output = BytesIO()
-            
-            # Preserve format or default to JPEG
-            format_to_use = image.format if image.format else 'JPEG'
-            
-            # Convert RGBA to RGB for JPEG
-            if format_to_use == 'JPEG' and resized_image.mode in ('RGBA', 'LA', 'P'):
-                # Create white background
-                rgb_image = Image.new('RGB', resized_image.size, (255, 255, 255))
-                if resized_image.mode == 'P':
-                    resized_image = resized_image.convert('RGBA')
-                rgb_image.paste(resized_image, mask=resized_image.split()[-1] if resized_image.mode == 'RGBA' else None)
-                resized_image = rgb_image
-            
-            resized_image.save(output, format=format_to_use, quality=85)
-            return output.getvalue()
-            
-        except Exception as e:
-            logger.error(f"Error resizing image: {e}")
-            return None
-    
-    def optimize_for_document(self, image_bytes: bytes, doc_type: str) -> Optional[bytes]:
-        """
-        Optimize image for document embedding with appropriate compression and sizing.
-        
-        Args:
-            image_bytes: Image data as bytes
-            doc_type: Document type ('powerpoint' or 'word')
-            
-        Returns:
-            Optimized image data as bytes, or None if optimization fails
-        """
-        try:
-            # Open the image
-            image = Image.open(BytesIO(image_bytes))
-            original_format = image.format
-            
-            # Define size limits based on document type
-            if doc_type.lower() == 'powerpoint':
-                # PowerPoint: optimize for slides (1920x1080 max for backgrounds)
-                max_width = 1920
-                max_height = 1080
-                quality = 85
-            elif doc_type.lower() == 'word':
-                # Word: optimize for page width (6.5 inches at 150 DPI)
-                max_width = 975  # 6.5 inches * 150 DPI
-                max_height = 1500  # Reasonable max height
-                quality = 90
-            else:
-                logger.warning(f"Unknown document type '{doc_type}', using default settings")
-                max_width = 1920
-                max_height = 1080
-                quality = 85
-            
-            # Resize if needed
-            resized_bytes = self.resize_image(image_bytes, max_width, max_height)
-            if resized_bytes is None:
-                logger.error("Failed to resize image during optimization")
-                return None
-            
-            # Re-open the resized image for further optimization
-            image = Image.open(BytesIO(resized_bytes))
-            
-            # Optimize and compress
-            output = BytesIO()
-            
-            # Determine output format
-            if original_format in ['JPEG', 'JPG']:
-                format_to_use = 'JPEG'
-            elif original_format == 'PNG':
-                # Keep PNG for images with transparency
-                if image.mode in ('RGBA', 'LA'):
-                    format_to_use = 'PNG'
+            with Image.open(BytesIO(image_data)) as img:
+                # Convert to RGB if necessary
+                if img.mode in ('RGBA', 'LA', 'P'):
+                    # Create a white background
+                    background = Image.new('RGB', img.size, (255, 255, 255))
+                    if img.mode == 'P':
+                        img = img.convert('RGBA')
+                    background.paste(img, mask=img.split()[-1] if img.mode in ('RGBA', 'LA') else None)
+                    img = background
+                elif img.mode != 'RGB':
+                    img = img.convert('RGB')
+                
+                # Set target dimensions based on document type
+                if doc_type == "word":
+                    # For Word documents: max 800x600, good for inline images
+                    max_width, max_height = 800, 600
+                elif doc_type == "powerpoint":
+                    # For PowerPoint: max 1200x800, good for slide backgrounds
+                    max_width, max_height = 1200, 800
                 else:
-                    # Convert to JPEG for better compression
-                    format_to_use = 'JPEG'
-            else:
-                # Default to JPEG for other formats
-                format_to_use = 'JPEG'
-            
-            # Convert mode if necessary
-            if format_to_use == 'JPEG':
-                if image.mode in ('RGBA', 'LA', 'P'):
-                    # Create white background for JPEG
-                    rgb_image = Image.new('RGB', image.size, (255, 255, 255))
-                    if image.mode == 'P':
-                        image = image.convert('RGBA')
-                    if image.mode in ('RGBA', 'LA'):
-                        rgb_image.paste(image, mask=image.split()[-1])
-                    image = rgb_image
-                elif image.mode != 'RGB':
-                    image = image.convert('RGB')
-            
-            # Save with optimization
-            if format_to_use == 'JPEG':
-                image.save(output, format='JPEG', quality=quality, optimize=True)
-            else:
-                image.save(output, format='PNG', optimize=True)
-            
-            optimized_bytes = output.getvalue()
-            
-            # Log size reduction
-            original_size = len(image_bytes) / 1024  # KB
-            optimized_size = len(optimized_bytes) / 1024  # KB
-            reduction = ((original_size - optimized_size) / original_size * 100) if original_size > 0 else 0
-            
-            logger.info(f"Optimized image for {doc_type}: {original_size:.1f}KB -> {optimized_size:.1f}KB ({reduction:.1f}% reduction)")
-            
-            return optimized_bytes
-            
+                    max_width, max_height = 800, 600
+                
+                # Resize if necessary while maintaining aspect ratio
+                if img.width > max_width or img.height > max_height:
+                    img.thumbnail((max_width, max_height), Image.Resampling.LANCZOS)
+                
+                # Save optimized image
+                output = BytesIO()
+                img.save(output, format='JPEG', quality=85, optimize=True)
+                optimized_data = output.getvalue()
+                
+                logger.info(f"Optimized image: {len(image_data)} -> {len(optimized_data)} bytes, size: {img.size}")
+                return optimized_data
+                
         except Exception as e:
-            logger.error(f"Error optimizing image for document: {e}")
+            logger.error(f"Error optimizing image: {e}")
             return None
+    
+    def determine_image_need(self, content: str) -> bool:
+        """Determine if content would benefit from an image."""
+        content_lower = content.lower()
+        
+        # Content that typically benefits from images
+        visual_keywords = [
+            'portrait', 'photo', 'picture', 'image', 'visual', 'appearance',
+            'building', 'architecture', 'landscape', 'scene', 'location',
+            'person', 'people', 'individual', 'character', 'figure',
+            'artwork', 'painting', 'sculpture', 'design', 'style',
+            'historical', 'monument', 'memorial', 'structure', 'place'
+        ]
+        
+        return any(keyword in content_lower for keyword in visual_keywords)
+    
+    def generate_image_query(self, content: str) -> str:
+        """Generate a search query for images based on content."""
+        lines = content.split('\n')
+        
+        # Try to extract key terms from the first few lines
+        key_terms = []
+        for line in lines[:3]:
+            words = line.split()
+            # Look for capitalized words (likely proper nouns)
+            for word in words:
+                if word.istitle() and len(word) > 2:
+                    key_terms.append(word)
+        
+        if key_terms:
+            return ' '.join(key_terms[:3])  # Use first 3 key terms
+        
+        # Fallback: use first few words
+        words = content.split()[:5]
+        return ' '.join(words)
+    
+    def determine_placement(self, content: str, doc_type: str) -> str:
+        """Determine optimal image placement based on content and document type."""
+        if doc_type == "powerpoint":
+            # For PowerPoint, decide between background and foreground
+            content_lower = content.lower()
+            
+            # Use background for scenic/atmospheric content
+            background_keywords = ['landscape', 'scene', 'background', 'setting', 'atmosphere']
+            if any(keyword in content_lower for keyword in background_keywords):
+                return "background"
+            else:
+                return "foreground"
+        else:
+            # For Word documents, always inline
+            return "inline"
     
     def close(self):
-        """Close the requests session."""
-        self.session.close()
+        """Close the WebDriver instance."""
+        if self.driver:
+            try:
+                self.driver.quit()
+                self.driver = None
+                logger.info("Chrome WebDriver closed")
+            except Exception as e:
+                logger.error(f"Error closing WebDriver: {e}")
     
-    def __enter__(self):
-        """Context manager entry."""
-        return self
-    
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        """Context manager exit."""
+    def __del__(self):
+        """Cleanup when the service is destroyed."""
         self.close()

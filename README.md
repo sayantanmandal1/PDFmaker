@@ -38,6 +38,7 @@ An AI-powered platform for creating professional business documents (Word .docx 
 - Python 3.10+
 - PostgreSQL database
 - OpenAI API key
+- Google Chrome browser (for image search functionality)
 
 ### Backend Setup
 
@@ -60,6 +61,8 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
+**Note**: The image service uses Selenium with Chrome WebDriver for reliable image search and download. See `backend/CHROME_SETUP.md` for detailed installation instructions. The ChromeDriver will be automatically downloaded and managed by webdriver-manager when first used.
+
 4. Configure environment variables in `.env`:
 ```env
 DATABASE_URL=postgresql://username:password@host:port/database
@@ -67,7 +70,12 @@ OPENAI_API_KEY=your_openai_api_key
 SECRET_KEY=your_jwt_secret_key
 ```
 
-5. Start the backend server:
+5. Test Chrome WebDriver setup (optional):
+```bash
+python test_chrome.py
+```
+
+6. Start the backend server:
 ```bash
 python start.py
 ```
