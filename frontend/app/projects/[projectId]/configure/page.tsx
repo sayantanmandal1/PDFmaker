@@ -92,21 +92,40 @@ export default function ConfigurePage() {
     router.push(`/projects/${projectId}/editor`);
   };
 
-  const handleTemplateAccepted = (items: string[]) => {
-    if (project?.document_type === 'word') {
-      // Convert template items to section configs
-      const newSections: SectionConfig[] = items.map((header, index) => ({
-        header,
-        position: index,
-      }));
-      setSections(newSections);
-    } else {
-      // Convert template items to slide configs
-      const newSlides: SlideConfig[] = items.map((title, index) => ({
-        title,
-        position: index,
-      }));
-      setSlides(newSlides);
+  const handleTemplateAccepted = async (items: string[]) => {
+    try {
+      setIsSaving(true);
+      setError(null);
+
+      if (project?.document_type === 'word') {
+        // Convert template items to section configs
+        const newSections: SectionConfig[] = items.map((header, index) => ({
+          header,
+          position: index,
+        }));
+        setSections(newSections);
+        
+        // Automatically save the configuration
+        await projectsApi.updateConfiguration(projectId, { sections: newSections });
+      } else {
+        // Convert template items to slide configs
+        const newSlides: SlideConfig[] = items.map((title, index) => ({
+          title,
+          position: index,
+        }));
+        setSlides(newSlides);
+        
+        // Automatically save the configuration
+        await projectsApi.updateConfiguration(projectId, { slides: newSlides });
+      }
+      
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (err: any) {
+      console.error('Failed to save template configuration:', err);
+      setError(err.message || 'Failed to save template configuration');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -195,6 +214,28 @@ export default function ConfigurePage() {
                 </span>
               </div>
             </div>
+
+            {/* Success Message - Green-tinted Glassmorphic */}
+            {saveSuccess && (
+              <div className="bg-green-500/10 backdrop-blur-md border border-green-500/30 rounded-lg p-4 shadow-lg shadow-green-500/10">
+                <div className="flex items-start gap-3">
+                  <svg
+                    className="w-5 h-5 text-green-400 shrink-0 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                  <p className="text-green-300 flex-1">Configuration saved successfully!</p>
+                </div>
+              </div>
+            )}
 
             {/* Error Message - Red-tinted Glassmorphic */}
             {error && (

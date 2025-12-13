@@ -51,10 +51,24 @@ export function GenerationProgress({
       setTimeout(() => {
         onGenerationComplete();
       }, 1500);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to generate content:', err);
-      const apiError = err as ApiError;
-      const errorMessage = apiError.detail || 'Failed to generate content';
+      
+      // Handle different error types
+      let errorMessage = 'Failed to generate content';
+      
+      if (err && typeof err === 'object') {
+        if (err.detail) {
+          errorMessage = err.detail;
+        } else if (err.message) {
+          errorMessage = err.message;
+        } else if (typeof err === 'string') {
+          errorMessage = err;
+        }
+      } else if (typeof err === 'string') {
+        errorMessage = err;
+      }
+      
       setError(errorMessage);
       setProgress(null);
     } finally {

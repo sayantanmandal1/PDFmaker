@@ -57,9 +57,16 @@ export class ApiClient {
         
         try {
           const errorData = await response.json();
-          errorMessage = errorData.detail || errorMessage;
-        } catch {
+          if (errorData.detail) {
+            errorMessage = errorData.detail;
+          } else if (errorData.message) {
+            errorMessage = errorData.message;
+          } else if (typeof errorData === 'string') {
+            errorMessage = errorData;
+          }
+        } catch (parseError) {
           // If we can't parse the error response, use the default message
+          console.warn('Failed to parse error response:', parseError);
         }
         
         const apiError: ApiError = {
@@ -78,6 +85,14 @@ export class ApiClient {
 
       return await response.json();
     } catch (error) {
+      console.error('API request failed:', {
+        url,
+        method: config.method,
+        error,
+        errorType: typeof error,
+        errorConstructor: error?.constructor?.name
+      });
+      
       if (error instanceof TypeError && error.message.includes('fetch')) {
         // Network error
         const networkError: ApiError = {
@@ -134,9 +149,16 @@ export class ApiClient {
       
       try {
         const errorData = await response.json();
-        errorMessage = errorData.detail || errorMessage;
-      } catch {
+        if (errorData.detail) {
+          errorMessage = errorData.detail;
+        } else if (errorData.message) {
+          errorMessage = errorData.message;
+        } else if (typeof errorData === 'string') {
+          errorMessage = errorData;
+        }
+      } catch (parseError) {
         // If we can't parse the error response, use the default message
+        console.warn('Failed to parse download error response:', parseError);
       }
       
       const apiError: ApiError = {

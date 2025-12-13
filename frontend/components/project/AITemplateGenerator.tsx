@@ -45,7 +45,23 @@ export function AITemplateGenerator({
       setEditableTemplate([...(items || [])]);
     } catch (err: any) {
       console.error('Template generation error:', err);
-      setError(err.detail || err.message || 'Failed to generate template');
+      
+      // Handle different error types
+      let errorMessage = 'Failed to generate template';
+      
+      if (err && typeof err === 'object') {
+        if (err.detail) {
+          errorMessage = err.detail;
+        } else if (err.message) {
+          errorMessage = err.message;
+        } else if (typeof err === 'string') {
+          errorMessage = err;
+        }
+      } else if (typeof err === 'string') {
+        errorMessage = err;
+      }
+      
+      setError(errorMessage);
     } finally {
       setIsGenerating(false);
     }
