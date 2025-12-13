@@ -21,6 +21,7 @@ from selenium.common.exceptions import TimeoutException, WebDriverException
 from webdriver_manager.chrome import ChromeDriverManager
 
 from config import settings
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -51,24 +52,68 @@ class ImageService:
         """Get or create a Chrome WebDriver instance."""
         if self.driver is None:
             try:
-                # Setup Chrome options
+                # Setup Chrome options to avoid detection
                 chrome_options = Options()
-                chrome_options.add_argument("--headless")
+                chrome_options.add_argument("--headless=new")  # Use new headless mode
                 chrome_options.add_argument("--no-sandbox")
                 chrome_options.add_argument("--disable-dev-shm-usage")
                 chrome_options.add_argument("--disable-gpu")
                 chrome_options.add_argument("--window-size=1920,1080")
-                chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
                 chrome_options.add_argument("--disable-blink-features=AutomationControlled")
                 chrome_options.add_argument("--disable-extensions")
                 chrome_options.add_argument("--disable-plugins")
-                chrome_options.add_argument("--disable-images")  # Don't load images automatically for faster page loads
+                chrome_options.add_argument("--disable-default-apps")
+                chrome_options.add_argument("--disable-background-timer-throttling")
+                chrome_options.add_argument("--disable-backgrounding-occluded-windows")
+                chrome_options.add_argument("--disable-renderer-backgrounding")
+                chrome_options.add_argument("--disable-features=TranslateUI")
+                chrome_options.add_argument("--disable-ipc-flooding-protection")
+                chrome_options.add_argument("--no-first-run")
+                chrome_options.add_argument("--no-default-browser-check")
+                chrome_options.add_argument("--no-pings")
+                chrome_options.add_argument("--password-store=basic")
+                chrome_options.add_argument("--use-mock-keychain")
+                
+                # Realistic user agent
+                chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+                
+                # Disable automation indicators
                 chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
                 chrome_options.add_experimental_option('useAutomationExtension', False)
                 
+                # Add preferences to appear more human-like
+                prefs = {
+                    "profile.default_content_setting_values": {
+                        "notifications": 2,
+                        "geolocation": 2,
+                    },
+                    "profile.managed_default_content_settings": {
+                        "images": 1  # Allow images
+                    }
+                }
+                chrome_options.add_experimental_option("prefs", prefs)
+                
                 # Install and setup ChromeDriver
                 try:
-                    service = Service(ChromeDriverManager().install())
+                    driver_path = ChromeDriverManager().install()
+                    
+                    # Fix for WebDriver Manager bug - ensure we get the actual executable
+                    if not driver_path.endswith('chromedriver.exe'):
+                        # Look for chromedriver.exe in the same directory
+                        import os
+                        driver_dir = os.path.dirname(driver_path)
+                        potential_exe = os.path.join(driver_dir, 'chromedriver.exe')
+                        if os.path.exists(potential_exe):
+                            driver_path = potential_exe
+                        else:
+                            # Look in subdirectories
+                            for root, dirs, files in os.walk(driver_dir):
+                                if 'chromedriver.exe' in files:
+                                    driver_path = os.path.join(root, 'chromedriver.exe')
+                                    break
+                    
+                    logger.info(f"Using ChromeDriver at: {driver_path}")
+                    service = Service(driver_path)
                 except Exception as driver_error:
                     logger.error(f"Failed to install ChromeDriver: {driver_error}")
                     raise Exception(f"ChromeDriver installation failed. Please ensure Chrome browser is installed. Error: {driver_error}")
@@ -102,30 +147,132 @@ class ImageService:
             self._rate_limit()
             driver = self._get_driver()
             
-            # Navigate to Google Images
-            search_url = f"https://www.google.com/search?q={query}&tbm=isch&hl=en"
+            # Use the most reliable Google Images URL
+            search_url = f"https://www.google.com/search?q={query}&tbm=isch&hl=en&safe=off"
             
             # Add size filter for high quality images
             if size_filter == "large":
                 search_url += "&tbs=isz:l"  # Large images
             elif size_filter == "medium":
                 search_url += "&tbs=isz:m"  # Medium images
-            elif size_filter == "icon":
-                search_url += "&tbs=isz:i"  # Icon size
             
             logger.info(f"Searching Google Images: {search_url}")
             driver.get(search_url)
             
-            # Wait for images to load
-            wait = WebDriverWait(driver, 10)
-            wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "img[data-src], img[src]")))
+            # Wait for page to load completely
+            time.sleep(5)
             
-            # Scroll down to load more images
-            driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-            time.sleep(2)
+            # Check if we got blocked
+            page_title = driver.title
+            current_url = driver.current_url
+            page_source = driver.page_source.lower()
             
-            # Find image elements
-            img_elements = driver.find_elements(By.CSS_SELECTOR, "img[data-src], img[src]")
+            if ("sorry" in current_url.lower() or 
+                "blocked" in page_title.lower() or
+                "unusual traffic" in page_source or
+                "captcha" in page_source):
+                logger.warning("Detected blocking by Google, trying alternative approach")
+                # Try to bypass by clicking through
+                try:
+                    # Look for "I'm not a robot" or continue buttons
+                    continue_buttons = driver.find_elements(By.XPATH, "//input[@type='submit']")
+                    if continue_buttons:
+                        continue_buttons[0].click()
+                        time.sleep(3)
+                except:
+                    pass
+            
+            # Scroll down to load more images first
+            logger.info("Scrolling to load more images...")
+            for i in range(5):
+                driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+                time.sleep(2)
+            
+            # Look for image elements with comprehensive approach
+            logger.info("Looking for image elements...")
+            
+            # Try to find clickable image containers first
+            clickable_selectors = [
+                "div[data-tbnid]",
+                "a[jsname]",
+                ".rg_bx",
+                ".isv-r"
+            ]
+            
+            clickable_elements = []
+            for selector in clickable_selectors:
+                elements = driver.find_elements(By.CSS_SELECTOR, selector)
+                clickable_elements.extend(elements)
+                if elements:
+                    logger.info(f"Found {len(elements)} clickable elements with selector: {selector}")
+            
+            results = []
+            processed_urls = set()
+            
+            # Try clicking on image containers to get high-res images
+            for i, element in enumerate(clickable_elements[:max_results * 2]):
+                if len(results) >= max_results:
+                    break
+                
+                try:
+                    # Click on the element
+                    driver.execute_script("arguments[0].click();", element)
+                    time.sleep(2)
+                    
+                    # Look for the high-resolution image that appears
+                    high_res_selectors = [
+                        "img[src*='http']:not([src*='gstatic']):not([src*='data:'])",
+                        ".n3VNCb",  # Google's high-res image class
+                        ".iPVvYb",  # Another Google image class
+                        ".r48jcc"   # Yet another class
+                    ]
+                    
+                    for hr_selector in high_res_selectors:
+                        hr_images = driver.find_elements(By.CSS_SELECTOR, hr_selector)
+                        for hr_img in hr_images:
+                            img_url = hr_img.get_attribute("src")
+                            if (img_url and 
+                                img_url not in processed_urls and
+                                not img_url.startswith("data:") and
+                                "gstatic" not in img_url and
+                                any(ext in img_url.lower() for ext in ['.jpg', '.jpeg', '.png', '.webp'])):
+                                
+                                # Get image details
+                                title = hr_img.get_attribute("alt") or f"Google image for {query}"
+                                width = int(hr_img.get_attribute("naturalWidth") or hr_img.get_attribute("width") or 0)
+                                height = int(hr_img.get_attribute("naturalHeight") or hr_img.get_attribute("height") or 0)
+                                
+                                result = ImageResult(
+                                    url=img_url,
+                                    title=title,
+                                    width=width,
+                                    height=height,
+                                    source="google"
+                                )
+                                
+                                results.append(result)
+                                processed_urls.add(img_url)
+                                logger.info(f"Found high-res Google image: {img_url[:60]}...")
+                                break
+                    
+                    # Close the opened image view
+                    driver.execute_script("document.body.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape'}));")
+                    time.sleep(1)
+                    
+                    if len(results) >= max_results:
+                        break
+                        
+                except Exception as click_error:
+                    logger.debug(f"Could not process clickable element {i}: {click_error}")
+                    continue
+            
+            if results:
+                logger.info(f"Successfully found {len(results)} images from Google")
+                return results
+            
+            # Fallback: try to get images directly without clicking
+            logger.info("Trying fallback direct image extraction...")
+            img_elements = driver.find_elements(By.TAG_NAME, "img")
             
             results = []
             processed_urls = set()
@@ -135,17 +282,58 @@ class ImageService:
                     break
                 
                 try:
-                    # Get image URL (prefer data-src over src)
-                    img_url = img_element.get_attribute("data-src") or img_element.get_attribute("src")
+                    # Try multiple ways to get the image URL
+                    img_url = None
+                    
+                    # Method 1: Check various data attributes
+                    for attr in ["data-src", "src", "data-iurl", "data-original", "data-deferred"]:
+                        url = img_element.get_attribute(attr)
+                        if url and not url.startswith("data:"):
+                            img_url = url
+                            break
+                    
+                    # Method 2: Try to click on the image to get high-res version
+                    if not img_url or "gstatic" in img_url:
+                        try:
+                            # Click on the image to open it
+                            driver.execute_script("arguments[0].click();", img_element)
+                            time.sleep(2)
+                            
+                            # Look for the high-res image in the opened view
+                            high_res_imgs = driver.find_elements(By.CSS_SELECTOR, "img[src*='http']:not([src*='gstatic'])")
+                            for hr_img in high_res_imgs:
+                                hr_url = hr_img.get_attribute("src")
+                                if hr_url and any(ext in hr_url.lower() for ext in ['.jpg', '.jpeg', '.png', '.webp']):
+                                    img_url = hr_url
+                                    break
+                            
+                            # Close the opened view by pressing Escape
+                            driver.execute_script("document.body.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape'}));")
+                            time.sleep(1)
+                            
+                        except Exception as click_error:
+                            logger.debug(f"Could not click image: {click_error}")
                     
                     if not img_url or img_url in processed_urls:
                         continue
                     
-                    # Skip data URLs, SVGs, and very small images
-                    if (img_url.startswith("data:") or 
-                        img_url.endswith(".svg") or 
-                        "1x1" in img_url or
-                        "logo" in img_url.lower()):
+                    # Skip unwanted image types
+                    skip_patterns = [
+                        "data:", ".svg", "1x1", "logo", "icon", "button", 
+                        "transparent", "spacer", "pixel", "blank", "avatar",
+                        "profile", "thumbnail"
+                    ]
+                    
+                    if any(pattern in img_url.lower() for pattern in skip_patterns):
+                        continue
+                    
+                    # Only accept proper image URLs
+                    valid_patterns = ['.jpg', '.jpeg', '.png', '.webp', 'images', 'media', 'photo']
+                    if not any(pattern in img_url.lower() for pattern in valid_patterns):
+                        continue
+                    
+                    # Skip very small images based on URL patterns
+                    if any(size in img_url for size in ['=s64', '=s96', '=s128', 'w=64', 'h=64']):
                         continue
                     
                     # Get image dimensions if available
@@ -186,35 +374,197 @@ class ImageService:
             logger.error(f"Google Images search error: {e}")
             return []
     
+    def search_images_pinterest(self, query: str, max_results: int = 5) -> List[ImageResult]:
+        """Search for images using Pinterest with headless Chrome."""
+        try:
+            self._rate_limit()
+            driver = self._get_driver()
+            
+            # Pinterest search URL
+            search_url = f"https://www.pinterest.com/search/pins/?q={query}"
+            
+            logger.info(f"Searching Pinterest: {search_url}")
+            driver.get(search_url)
+            
+            # Wait for page to load
+            time.sleep(5)
+            
+            # Scroll to load more pins
+            for i in range(3):
+                driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+                time.sleep(2)
+            
+            # Find Pinterest pin images
+            pin_selectors = [
+                "img[src*='pinimg.com']",
+                "div[data-test-id='pin'] img",
+                ".Yl- img",  # Pinterest pin container
+                ".GrowthUnauthPinImage img"
+            ]
+            
+            img_elements = []
+            for selector in pin_selectors:
+                elements = driver.find_elements(By.CSS_SELECTOR, selector)
+                img_elements.extend(elements)
+                if elements:
+                    logger.info(f"Found {len(elements)} images with Pinterest selector: {selector}")
+            
+            results = []
+            processed_urls = set()
+            
+            for img_element in img_elements:
+                if len(results) >= max_results:
+                    break
+                
+                try:
+                    img_url = img_element.get_attribute("src")
+                    
+                    if not img_url or img_url in processed_urls:
+                        continue
+                    
+                    # Convert small Pinterest thumbnails to larger versions
+                    if 'pinimg.com' in img_url:
+                        # Replace small sizes with larger ones
+                        size_replacements = {
+                            '60x60': '736x',
+                            '236x': '736x', 
+                            '474x': '736x',
+                            '75x75': '736x',
+                            '170x': '736x',
+                            '564x': '736x'
+                        }
+                        
+                        for small_size, large_size in size_replacements.items():
+                            if small_size in img_url:
+                                img_url = img_url.replace(small_size, large_size)
+                                break
+                        
+                        # If no size found, try to add 736x
+                        if '/60x60/' in img_url:
+                            img_url = img_url.replace('/60x60/', '/736x/')
+                        elif not any(size in img_url for size in ['736x', '564x', '474x']):
+                            # Insert 736x before the filename
+                            parts = img_url.split('/')
+                            if len(parts) > 3:
+                                parts.insert(-1, '736x')
+                                img_url = '/'.join(parts)
+                    
+                    # Get alt text as title
+                    title = img_element.get_attribute("alt") or f"Pinterest image for {query}"
+                    
+                    # Get dimensions if available
+                    width = 0
+                    height = 0
+                    try:
+                        width = int(img_element.get_attribute("width") or 0)
+                        height = int(img_element.get_attribute("height") or 0)
+                    except (ValueError, TypeError):
+                        pass
+                    
+                    result = ImageResult(
+                        url=img_url,
+                        title=title,
+                        width=width,
+                        height=height,
+                        source="pinterest"
+                    )
+                    
+                    results.append(result)
+                    processed_urls.add(img_url)
+                    
+                except Exception as e:
+                    logger.debug(f"Error processing Pinterest image: {e}")
+                    continue
+            
+            logger.info(f"Successfully found {len(results)} images from Pinterest")
+            return results
+            
+        except Exception as e:
+            logger.error(f"Pinterest search error: {e}")
+            return []
+    
+    def search_images_placeholder(self, query: str, max_results: int = 5) -> List[ImageResult]:
+        """Generate placeholder images for development/fallback."""
+        try:
+            results = []
+            
+            # Create placeholder images with different sizes
+            sizes = [(800, 600), (1024, 768), (640, 480)]
+            
+            for i in range(min(max_results, len(sizes))):
+                width, height = sizes[i]
+                
+                # Use a placeholder service that doesn't require API keys
+                placeholder_url = f"https://picsum.photos/{width}/{height}?random={hash(query + str(i)) % 1000}"
+                
+                result = ImageResult(
+                    url=placeholder_url,
+                    title=f"Placeholder image for {query}",
+                    width=width,
+                    height=height,
+                    source="placeholder"
+                )
+                
+                results.append(result)
+            
+            logger.info(f"Generated {len(results)} placeholder images")
+            return results
+            
+        except Exception as e:
+            logger.error(f"Placeholder image generation error: {e}")
+            return []
+
     def search_images_with_fallback(self, query: str, max_results: int = 5) -> List[ImageResult]:
-        """Search for images with different size filters as fallback."""
+        """Search for images with multiple real sources as fallback."""
         all_results = []
         
-        # Try different size filters
-        size_filters = ["large", "medium"]
-        
-        for size_filter in size_filters:
-            try:
-                logger.info(f"Searching Google Images with {size_filter} size filter")
-                results = self.search_images_google(query, max_results, size_filter)
+        # Try Pinterest first (often less restrictive)
+        try:
+            logger.info("Searching Pinterest for images")
+            pinterest_results = self.search_images_pinterest(query, max_results)
+            if pinterest_results:
+                all_results.extend(pinterest_results)
+                logger.info(f"Found {len(pinterest_results)} images from Pinterest")
                 
-                if results:
-                    all_results.extend(results)
-                    logger.info(f"Found {len(results)} images with {size_filter} filter")
-                    
-                    # If we have enough results, stop searching
-                    if len(all_results) >= max_results:
-                        break
-                else:
-                    logger.warning(f"No results with {size_filter} filter, trying next")
-                    
-            except Exception as e:
-                logger.error(f"Error with {size_filter} filter: {e}")
-                continue
+                # If we have enough results, return them
+                if len(all_results) >= max_results:
+                    return all_results[:max_results]
+        except Exception as e:
+            logger.error(f"Pinterest search failed: {e}")
         
+        # If Pinterest didn't provide enough results, try Google Images
+        remaining_needed = max_results - len(all_results)
+        if remaining_needed > 0:
+            # Try different size filters with improved scraping
+            size_filters = ["large", "medium"]
+            
+            for size_filter in size_filters:
+                try:
+                    logger.info(f"Searching Google Images with {size_filter} size filter")
+                    results = self.search_images_google(query, remaining_needed, size_filter)
+                    
+                    if results:
+                        all_results.extend(results)
+                        logger.info(f"Found {len(results)} images from Google with {size_filter} filter")
+                        
+                        # If we have enough results, stop searching
+                        if len(all_results) >= max_results:
+                            break
+                    else:
+                        logger.warning(f"No results with {size_filter} filter, trying next")
+                        
+                except Exception as e:
+                    logger.error(f"Error with Google {size_filter} filter: {e}")
+                    continue
+        
+        # Only use placeholders if absolutely no real images were found
         if not all_results:
-            logger.error(f"All image searches failed for query: {query}")
+            logger.error(f"FAILED to find any real images for query: {query}")
+            logger.error("This should not happen - please check the scraping logic")
+            # Don't use placeholders - return empty list to force debugging
+            return []
         
+        logger.info(f"Successfully found {len(all_results)} real images for query: {query}")
         return all_results[:max_results]
     
     def download_image(self, url: str) -> Optional[bytes]:
